@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import { useNavigate } from "react-router-dom"; // ✅ import this
+import { useNavigate } from "react-router-dom";
 import '../../../css/Login.css';
 import logo from '../../../assets/Logo/Logo.png'; 
-
 
 const Login = () => {
   const canvasRef = useRef(null);
@@ -11,6 +10,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate(); 
+  
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -119,71 +119,70 @@ const Login = () => {
     e.preventDefault();
     console.log('Login attempt:', { email, password });
     navigate("/AdminDashboard");
-    
   };
 
   return (
     <div className="login-container">
-      <canvas ref={canvasRef} className="canvas-bg" />
+      <canvas ref={canvasRef} className="login-canvas-bg" />
       <div className="login-wrapper">
         <div className="login-content">
-          <div className="glow-effect"></div>
+          <div className="login-glow-effect"></div>
           <div className="login-card">
-            <div className="header">
+            <div className="login-header">
               <div>
-                <div className="logo">
-                <img src={logo} alt="Ynov Logo" className="logo-img" />
+                <div className="login-logo">
+                  <img src={logo} alt="Ynov Logo" className="login-logo-img" />
                 </div>
               </div>
-              <h1 className="title">Ynov Campus</h1>
-              <p className="subtitle">Connectez-vous à votre espace</p>
+              <h1 className="login-title">Ynov Campus</h1>
+              <p className="login-subtitle">Connectez-vous à votre espace</p>
             </div>
 
-            <div className="form">
-              <div className="form-group">
-                <label className="label">Email</label>
-                <div className="input-wrapper">
-                  <Mail className="input-icon" />
+            <div className="login-form">
+              <div className="login-form-group">
+                <label className="login-label">Email</label>
+                <div className="login-input-wrapper">
+                  <Mail className="login-input-icon" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="input"
+                    className="login-input"
                     placeholder="votre.email@ynov.com"
                   />
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="label">Mot de passe</label>
-                <div className="input-wrapper">
-                  <Lock className="input-icon" />
+              <div className="login-form-group">
+                <label className="login-label">Mot de passe</label>
+                <div className="login-input-wrapper">
+                  <Lock className="login-input-icon" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="input"
+                    className="login-input"
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="toggle-password"
+                    className="login-toggle-password"
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
 
-              <div className="form-options">
-                <label className="remember-me">
-                  <input type="checkbox" className="checkbox" />
+              <div className="login-form-options">
+                <label className="login-remember-me">
+                  <input type="checkbox" className="login-checkbox" />
                   Se souvenir de moi
                 </label>
-                <button className="forgot-password">Mot de passe oublié?</button>
+                <button className="login-forgot-password">Mot de passe oublié?</button>
               </div>
 
-              <button onClick={handleSubmit} className="submit-btn">
+              <button onClick={handleSubmit} className="login-submit-btn">
                 Se connecter
               </button>
             </div>

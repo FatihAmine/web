@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Home, 
   Users,
@@ -16,11 +16,33 @@ import {
   Plus,
   User
 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import '../../../css/parent/ParentHome.css';
+
+const menuItems = [
+  { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/parent/dashboard' },
+  { id: 'children', icon: Users, label: 'Mes Enfants', path: '/parent/children' },
+  { id: 'documents', icon: FileText, label: 'Documents', path: '/parent/documents' },
+  { id: 'requests', icon: Clock, label: 'Demandes', path: '/parent/demandes' },
+  { id: 'notifications', icon: Bell, label: 'Notifications', path: '/parent/notifications' },
+  { id: 'settings', icon: Settings, label: 'Paramètres', path: '/parent/settings' }
+];
 
 const ParentDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // highlight active tab based on URL
+  const getActiveTabFromPath = () => {
+    const found = menuItems.find(item => location.pathname.startsWith(item.path));
+    return found ? found.id : 'dashboard';
+  };
+  const [activeTab, setActiveTab] = useState(getActiveTabFromPath());
+  useEffect(() => {
+    setActiveTab(getActiveTabFromPath());
+    // eslint-disable-next-line
+  }, [location.pathname]);
 
   const userData = {
     firstName: "Fatima",
@@ -28,7 +50,6 @@ const ParentDashboard = () => {
     profilePic: "https://ui-avatars.com/api/?name=Fatima+Bennani&background=17766e&color=fff&size=200"
   };
 
-  // Parent can have multiple children
   const children = [
     { id: 1, name: "Ahmed Bennani", class: "1ère année Informatique", status: "active" },
     { id: 2, name: "Sara Bennani", class: "3ème année Marketing", status: "active" }
@@ -52,15 +73,6 @@ const ParentDashboard = () => {
     { id: 1, childName: "Ahmed Bennani", document: "Attestation de Réussite", requestDate: "2025-10-10", status: "pending" },
     { id: 2, childName: "Sara Bennani", document: "Convention de Stage", requestDate: "2025-10-08", status: "in_progress" },
     { id: 3, childName: "Ahmed Bennani", document: "Certificat de Scolarité", requestDate: "2025-10-01", status: "approved" }
-  ];
-
-  const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Tableau de bord' },
-    { id: 'children', icon: Users, label: 'Mes Enfants' },
-    { id: 'documents', icon: FileText, label: 'Documents' },
-    { id: 'requests', icon: Clock, label: 'Demandes' },
-    { id: 'notifications', icon: Bell, label: 'Notifications' },
-    { id: 'settings', icon: Settings, label: 'Paramètres' }
   ];
 
   const getStatusIcon = (status) => {
@@ -107,21 +119,23 @@ const ParentDashboard = () => {
               </div>
             )}
           </div>
-
           <nav className="parent-menu">
             {menuItems.map(item => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (item.path) navigate(item.path);
+                }}
                 className={`parent-menu-item ${activeTab === item.id ? 'parent-menu-item-active' : ''}`}
                 title={!sidebarOpen ? item.label : ''}
+                type="button"
               >
                 <item.icon size={20} />
                 {sidebarOpen && <span>{item.label}</span>}
               </button>
             ))}
           </nav>
-
           <button className="parent-disconnect-btn">
             <LogOut size={20} />
             {sidebarOpen && <span>Déconnexion</span>}
@@ -271,6 +285,7 @@ const ParentDashboard = () => {
               </div>
             </div>
           </div>
+
         </div>
       </main>
     </div>

@@ -14,12 +14,15 @@ import {
   XCircle,
   AlertCircle
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 import '../../../css/etudiant/EtudiantHome.css';
 
 const StudentDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-
+  const navigate = useNavigate();
+  
   const userData = {
     firstName: "Mohamed",
     lastName: "Alami",
@@ -47,12 +50,12 @@ const StudentDashboard = () => {
   ];
 
   const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Tableau de bord' },
-    { id: 'documents', icon: FileText, label: 'Mes Documents' },
-    { id: 'requests', icon: Clock, label: 'Mes Demandes' },
-    { id: 'upload', icon: Upload, label: 'Téléverser' },
-    { id: 'notifications', icon: Bell, label: 'Notifications' },
-    { id: 'settings', icon: Settings, label: 'Paramètres' }
+    { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/etudiant' },
+    { id: 'documents', icon: FileText, label: 'Mes Documents', path: '/etudiant/documents' },
+    { id: 'requests', icon: Clock, label: 'Mes Demandes', path: '/etudiant/demandes' },
+    { id: 'upload', icon: Upload, label: 'Téléverser', path: '/etudiant/upload' },
+    { id: 'notifications', icon: Bell, label: 'Notifications', path: '/etudiant/notifications' },
+    { id: 'settings', icon: Settings, label: 'Paramètres', path: '/etudiant/settings' }
   ];
 
   const getStatusIcon = (status) => {
@@ -99,12 +102,15 @@ const StudentDashboard = () => {
 
           <nav className="dashboard-menu">
             {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`dashboard-menu-item ${activeTab === item.id ? 'dashboard-menu-item-active' : ''}`}
-                title={!sidebarOpen ? item.label : ''}
-              >
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    navigate(item.path); // navigate to the route
+                  }}
+                  className={`student-requests-menu-item ${activeTab === item.id ? 'student-requests-menu-item-active' : ''}`}
+                  title={!sidebarOpen ? item.label : ''}
+                >
                 <item.icon size={20} />
                 {sidebarOpen && <span>{item.label}</span>}
               </button>

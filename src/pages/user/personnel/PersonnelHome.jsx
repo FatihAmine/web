@@ -19,11 +19,13 @@ import {
   AlertCircle,
   BarChart3
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import '../../../css/personnel/PersonnelHome.css';
+
 const PersonnelDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-
+    const navigate = useNavigate();
   const userData = {
     firstName: "Karim",
     lastName: "El Amrani",
@@ -53,15 +55,14 @@ const PersonnelDashboard = () => {
     { id: 4, action: "Nouveau téléversement", user: "Personnel", document: "Bulletins S1 2024", time: "Il y a 2h" }
   ];
 
-  const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Tableau de bord' },
-    { id: 'requests', icon: Clock, label: 'Demandes' },
-    { id: 'documents', icon: FileText, label: 'Gestion Documents' },
-    { id: 'students', icon: Users, label: 'Étudiants' },
-    { id: 'statistics', icon: BarChart3, label: 'Statistiques' },
-    { id: 'notifications', icon: Bell, label: 'Notifications' },
-    { id: 'settings', icon: Settings, label: 'Paramètres' }
-  ];
+const menuItems = [
+  { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/personnel' },
+  { id: 'requests', icon: Clock, label: 'Demandes', path: '/personnel/demandes' },
+  { id: 'documents', icon: FileText, label: 'Gestion Documents', path: '/personnel/documents' },
+  { id: 'students', icon: Users, label: 'Étudiants', path: '/personnel/students' },
+  { id: 'notifications', icon: Bell, label: 'Notifications', path: '/personnel/notifications' },
+  { id: 'settings', icon: Settings, label: 'Paramètres', path: '/personnel/settings' }
+];
 
   const getStatusIcon = (status) => {
     switch(status) {
@@ -130,7 +131,10 @@ const PersonnelDashboard = () => {
             {menuItems.map(item => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  navigate(item.path);
+                }}
                 className={`personnel-menu-item ${activeTab === item.id ? 'personnel-menu-item-active' : ''}`}
                 title={!sidebarOpen ? item.label : ''}
               >
