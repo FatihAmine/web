@@ -1,40 +1,30 @@
-// src/components/parent/ParametresParents.jsx
 import React, { useState } from 'react';
+import Sidebar from '../../component/sidebarparent';
 import {
-  Home,
-  Users,
-  FileText,
-  Clock,
   Bell,
-  Settings,
-  LogOut,
   Menu,
   X,
   User,
   Save,
   Globe,
-  Lock
+  Lock,
+  Edit
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/parent/ParametresParents.css';
 
 const TABS = [
-  { key: 'profil', label: 'Profil', icon: <User size={18} /> },
-  { key: 'prefs', label: 'Préférences', icon: <Globe size={18} /> },
-  { key: 'securite', label: 'Sécurité', icon: <Lock size={18} /> }
-];
+  { key: 'profil', label: 'Profil', icon: User },
 
-const menuItems = [
-  { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/parent' },
-  { id: 'children', icon: Users, label: 'Mes Enfants', path: '/parent/children' },
-  { id: 'documents', icon: FileText, label: 'Documents', path: '/parent/documents' },
-  { id: 'requests', icon: Clock, label: 'Demandes', path: '/parent/demandes' },
-  { id: 'notifications', icon: Bell, label: 'Notifications', path: '/parent/notifications' },
-  { id: 'settings', icon: Settings, label: 'Paramètres', path: '/parent/settings' }
+  { key: 'securite', label: 'Sécurité', icon: Lock }
 ];
 
 const ParametresParents = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const [activeTab, setActiveTab] = useState('settings');
   const [currentSection, setCurrentSection] = useState('profil');
   const [editing, setEditing] = useState(false);
@@ -43,88 +33,96 @@ const ParametresParents = () => {
     lastName: "Bennani",
     email: "fatima.bennani@ynov.ma",
     language: "fr",
+    twoFactor: "off",
     password: "",
     confirmPassword: ""
   });
   const navigate = useNavigate();
 
+  const userData = {
+    firstName: form.firstName,
+    lastName: form.lastName,
+    role: "Parent",
+    profilePic: `https://ui-avatars.com/api/?name=${form.firstName}+${form.lastName}&background=17766e&color=fff&size=200`
+  };
+
+  const handleLogout = () => {
+    navigate('/parent/login');
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
   };
+
   const handleSave = (e) => {
     e.preventDefault();
     setEditing(false);
-    // Simulate save logic here
+    console.log('Settings saved:', form);
   };
 
   return (
     <div className="parents-settings-page">
-      <aside className={`parent-sidebar ${sidebarOpen ? 'parent-sidebar-open' : 'parent-sidebar-closed'}`}>
-        <div className="parent-sidebar-content">
-          <div className="parent-profile-section">
-            <img
-              src={`https://ui-avatars.com/api/?name=${form.firstName}+${form.lastName}&background=17766e&color=fff&size=200`}
-              alt="Profile"
-              className="parent-profile-pic"
-            />
-            {sidebarOpen && (
-              <div className="parent-profile-info">
-                <h3 className="parent-profile-name">{form.firstName} {form.lastName}</h3>
-                <p className="parent-profile-role">Parent</p>
-              </div>
-            )}
-          </div>
-          <nav className="parent-menu">
-            {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  navigate(item.path);
-                }}
-                className={`parent-menu-item ${activeTab === item.id ? 'parent-menu-item-active' : ''}`}
-                title={!sidebarOpen ? item.label : ''}
-                type="button"
-              >
-                <item.icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
-              </button>
-            ))}
-          </nav>
-          <button className="parent-disconnect-btn">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Déconnexion</span>}
-          </button>
-        </div>
-      </aside>
-      <main className="parent-main-content">
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={handleLogout}
+        userData={userData}
+      />
+
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <main className={`parent-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="parent-header">
           <button
-            className="parent-toggle-sidebar-btn"
+            className="parent-toggle-sidebar-btn mobile-menu-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle Sidebar"
           >
-            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <h1 className="parent-page-title">Paramètres du compte</h1>
-        </header>
-        <div className="parent-settings-container">
-          <div className="parent-settings-tabs">
-            {TABS.map(tab => (
-              <button
-                key={tab.key}
-                className={`parent-settings-tab-btn${currentSection === tab.key ? ' active' : ''}`}
-                onClick={() => setCurrentSection(tab.key)}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
+          <div className="parent-header-actions">
+            <button className="parent-notif-btn" aria-label="Notifications">
+              <Bell size={20} />
+              <span className="notification-badge"></span>
+            </button>
           </div>
+        </header>
+
+        <div className="parent-settings-container">
+          {/* Tabs */}
+          <div className="parent-settings-tabs">
+            {TABS.map(tab => {
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.key}
+                  className={`parent-settings-tab-btn${currentSection === tab.key ? ' active' : ''}`}
+                  onClick={() => setCurrentSection(tab.key)}
+                >
+                  <TabIcon size={18} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Form Card */}
           <form className="parent-settings-form-card" onSubmit={handleSave}>
-            {currentSection === 'profil' &&
+            {currentSection === 'profil' && (
               <div className="parent-settings-section">
-                <h2 className="parent-settings-form-title">Profil parent</h2>
+                <h2 className="parent-settings-form-title">
+                  <User size={20} style={{verticalAlign: 'middle', marginRight: '8px', color: '#5eead4'}} />
+                  Profil parent
+                </h2>
                 <div className="parent-settings-form-block">
                   <div className="parent-settings-form-group">
                     <label className="parent-settings-form-label">Prénom</label>
@@ -159,16 +157,21 @@ const ParametresParents = () => {
                       className="parent-settings-form-input"
                       required
                     />
+                    <span className="parent-settings-form-hint">L'email ne peut pas être modifié</span>
                   </div>
                 </div>
               </div>
-            }
-            {currentSection === 'prefs' &&
+            )}
+
+            {currentSection === 'prefs' && (
               <div className="parent-settings-section">
-                <h2 className="parent-settings-form-title">Préférences</h2>
+                <h2 className="parent-settings-form-title">
+                  <Globe size={20} style={{verticalAlign: 'middle', marginRight: '8px', color: '#5eead4'}} />
+                  Préférences
+                </h2>
                 <div className="parent-settings-form-block">
                   <div className="parent-settings-form-group">
-                    <label className="parent-settings-form-label">Langue</label>
+                    <label className="parent-settings-form-label">Langue de l'interface</label>
                     <select
                       name="language"
                       value={form.language}
@@ -178,14 +181,19 @@ const ParametresParents = () => {
                     >
                       <option value="fr">Français</option>
                       <option value="en">English</option>
+                      <option value="ar">العربية</option>
                     </select>
                   </div>
                 </div>
               </div>
-            }
-            {currentSection === 'securite' &&
+            )}
+
+            {currentSection === 'securite' && (
               <div className="parent-settings-section">
-                <h2 className="parent-settings-form-title">Sécurité du compte</h2>
+                <h2 className="parent-settings-form-title">
+                  <Lock size={20} style={{verticalAlign: 'middle', marginRight: '8px', color: '#5eead4'}} />
+                  Sécurité du compte
+                </h2>
                 <div className="parent-settings-form-block">
                   <div className="parent-settings-form-group">
                     <label className="parent-settings-form-label">Nouveau mot de passe</label>
@@ -196,7 +204,7 @@ const ParametresParents = () => {
                       onChange={handleChange}
                       disabled={!editing}
                       className="parent-settings-form-input"
-                      placeholder="Nouveau mot de passe"
+                      placeholder="••••••••"
                     />
                   </div>
                   <div className="parent-settings-form-group">
@@ -208,12 +216,27 @@ const ParametresParents = () => {
                       onChange={handleChange}
                       disabled={!editing}
                       className="parent-settings-form-input"
-                      placeholder="Confirmer mot de passe"
+                      placeholder="••••••••"
                     />
+                  </div>
+                  <div className="parent-settings-form-group">
+                    <label className="parent-settings-form-label">Authentification à deux facteurs (2FA)</label>
+                    <select
+                      name="twoFactor"
+                      value={form.twoFactor}
+                      onChange={handleChange}
+                      disabled={!editing}
+                      className="parent-settings-form-select"
+                    >
+                      <option value="off">Désactivé</option>
+                      <option value="email">Par Email</option>
+                      <option value="app">Application Authenticator</option>
+                    </select>
                   </div>
                 </div>
               </div>
-            }
+            )}
+
             <div className="parent-settings-form-footer">
               {!editing ? (
                 <button
@@ -221,17 +244,38 @@ const ParametresParents = () => {
                   className="parent-settings-edit-btn"
                   onClick={() => setEditing(true)}
                 >
-                  <Settings size={18} />
-                  Modifier
+                  <Edit size={18} />
+                  <span>Modifier</span>
                 </button>
               ) : (
-                <button
-                  type="submit"
-                  className="parent-settings-save-btn"
-                >
-                  <Save size={18} />
-                  Sauvegarder
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="parent-settings-cancel-btn"
+                    onClick={() => {
+                      setEditing(false);
+                      setForm({
+                        firstName: "Fatima",
+                        lastName: "Bennani",
+                        email: "fatima.bennani@ynov.ma",
+                        language: "fr",
+                        twoFactor: "off",
+                        password: "",
+                        confirmPassword: ""
+                      });
+                    }}
+                  >
+                    <X size={18} />
+                    <span>Annuler</span>
+                  </button>
+                  <button
+                    type="submit"
+                    className="parent-settings-save-btn"
+                  >
+                    <Save size={18} />
+                    <span>Sauvegarder</span>
+                  </button>
+                </>
               )}
             </div>
           </form>

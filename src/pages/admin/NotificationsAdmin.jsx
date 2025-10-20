@@ -259,14 +259,7 @@ const AdminNotifications = () => {
                           <Eye size={16} />
                           <span>{notif.unread ? 'Marquer lu' : 'Non lu'}</span>
                         </button>
-                        <button
-                          className="notif-action-btn delete"
-                          title="Supprimer"
-                          onClick={() => setConfirmDelete(notif.id)}
-                        >
-                          <Trash2 size={16} />
-                          <span>Supprimer</span>
-                        </button>
+
                       </div>
                     </div>
                   );

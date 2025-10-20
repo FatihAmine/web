@@ -15,7 +15,6 @@ import NotificationsAdmin from "./pages/admin/NotificationsAdmin"; // AdminNotif
 import EtudiantHome from "./pages/user/etudiant/EtudiantHome"; // StudentDashboard
 import DemandesEtudiants from "./pages/user/etudiant/DemandesEtudiants"; // StudentRequests
 import DocumentEtudiants from "./pages/user/etudiant/DocumentEtudiants"; // StudentDocuments
-import TeleverserEtudiants from "./pages/user/etudiant/TeleverserEtudiants"; // StudentUpload
 import NotificationsEtudiants from "./pages/user/etudiant/NotificationsEtudiants"; // StudentNotifications
 import ParamètresEtudiants from "./pages/user/etudiant/ParametresEtudiants"; // StudentSettings
 
@@ -28,9 +27,7 @@ import NotificationsParents from "./pages/user/parent/NotificationsParents";
 import ParamètresParents from "./pages/user/parent/ParametresParents.jsx"; // ParentSettings
 // Personnel
 import PersonnelHome from "./pages/user/personnel/PersonnelHome"; // PersonnelDashboard
-import DemandesPersonnel from "./pages/user/personnel/DemandesPersonnel";  // PersonnelRequests
 import DocumentPersonnel from "./pages/user/personnel/DocumentPersonnel"; // PersonnelDocuments
-import EtudiantsPersonnel from "./pages/user/personnel/EtudiantsPersonnel"; // PersonnelStudents
 import NotificationsPersonnel from "./pages/user/personnel/NotificationsPersonnel"; // PersonnelNotifications
 import ParamètresPersonnel from "./pages/user/personnel/ParametresPersonnel"; // PersonnelSettings  
 
@@ -52,7 +49,6 @@ function App() {
         <Route path="/etudiant" element={<EtudiantHome />} />
         <Route path="/etudiant/demandes" element={<DemandesEtudiants />} />
         <Route path="/etudiant/documents" element={<DocumentEtudiants />} />
-        <Route path="/etudiant/upload" element={<TeleverserEtudiants />} />
         <Route path="/etudiant/notifications" element={<NotificationsEtudiants />} />
         <Route path="/etudiant/settings" element={<ParamètresEtudiants />} />
         {/* Parent  */}
@@ -64,9 +60,7 @@ function App() {
         <Route path="/parent/settings" element={<ParamètresParents />} />
         {/* Personnel  */}
         <Route path="/personnel" element={<PersonnelHome />} />
-        <Route path="/personnel/demandes" element={<DemandesPersonnel />} />
         <Route path="/personnel/documents" element={<DocumentPersonnel />} />
-        <Route path="/personnel/students" element={<EtudiantsPersonnel />} />
         <Route path="/personnel/notifications" element={<NotificationsPersonnel />} />
         <Route path="/personnel/settings" element={<ParamètresPersonnel />} />
 

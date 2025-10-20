@@ -1,52 +1,24 @@
-// src/components/parent/EtudiantsParents.jsx
 import React, { useState } from 'react';
+import Sidebar from '../../component/sidebarparent';
 import {
-  Home,
-  Users,
-  FileText,
-  Clock,
   Bell,
-  Settings,
-  LogOut,
   Menu,
   X,
   User,
+  Mail,
+  Calendar,
+  GraduationCap,
+  CheckCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/parent/EtudiantsParents.css';
 
-const menuItems = [
-  { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/parent' },
-  { id: 'children', icon: Users, label: 'Mes Enfants', path: '/parent/children' },
-  { id: 'documents', icon: FileText, label: 'Documents', path: '/parent/documents' },
-  { id: 'requests', icon: Clock, label: 'Demandes', path: '/parent/demandes' },
-  { id: 'notifications', icon: Bell, label: 'Notifications', path: '/parent/notifications' },
-  { id: 'settings', icon: Settings, label: 'Paramètres', path: '/parent/settings' }
-];
-
-const childrenData = [
-  {
-    id: 1,
-    name: "Ahmed Bennani",
-    class: "1ère année Informatique",
-    status: "active",
-    birthDate: "2005-09-26",
-    matricule: "YNOV2025111",
-    email: "ahmed.bennani@ynov.ma"
-  },
-  {
-    id: 2,
-    name: "Sara Bennani",
-    class: "3ème année Marketing",
-    status: "active",
-    birthDate: "2003-06-14",
-    matricule: "YNOV2025033",
-    email: "sara.bennani@ynov.ma"
-  }
-];
-
 const EtudiantsParents = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const [activeTab, setActiveTab] = useState('children');
   const [selectedChild, setSelectedChild] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -55,13 +27,42 @@ const EtudiantsParents = () => {
   const userData = {
     firstName: "Fatima",
     lastName: "Bennani",
+    role: "Parent",
     profilePic: "https://ui-avatars.com/api/?name=Fatima+Bennani&background=17766e&color=fff&size=200"
+  };
+
+  const childrenData = [
+    {
+      id: 1,
+      name: "Ahmed Bennani",
+      class: "1ère année Informatique",
+      status: "active",
+      birthDate: "26/09/2005",
+      matricule: "YNOV2025111",
+      email: "ahmed.bennani@ynov.ma",
+      year: "2024-2025"
+    },
+    {
+      id: 2,
+      name: "Sara Bennani",
+      class: "3ème année Marketing",
+      status: "active",
+      birthDate: "14/06/2003",
+      matricule: "YNOV2025033",
+      email: "sara.bennani@ynov.ma",
+      year: "2024-2025"
+    }
+  ];
+
+  const handleLogout = () => {
+    navigate('/parent/login');
   };
 
   const openChildModal = (child) => {
     setSelectedChild(child);
     setShowModal(true);
   };
+
   const closeChildModal = () => {
     setShowModal(false);
     setSelectedChild(null);
@@ -69,110 +70,148 @@ const EtudiantsParents = () => {
 
   return (
     <div className="parent-children-page">
-      <aside className={`parent-sidebar ${sidebarOpen ? 'parent-sidebar-open' : 'parent-sidebar-closed'}`}>
-        <div className="parent-sidebar-content">
-          <div className="parent-profile-section">
-            <img src={userData.profilePic} alt="Profile" className="parent-profile-pic" />
-            {sidebarOpen && (
-              <div className="parent-profile-info">
-                <h3 className="parent-profile-name">{userData.firstName} {userData.lastName}</h3>
-                <p className="parent-profile-role">Parent</p>
-              </div>
-            )}
-          </div>
-          <nav className="parent-menu">
-            {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  navigate(item.path);
-                }}
-                className={`parent-menu-item ${activeTab === item.id ? 'parent-menu-item-active' : ''}`}
-                title={!sidebarOpen ? item.label : ''}
-                type="button"
-              >
-                <item.icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
-              </button>
-            ))}
-          </nav>
-          <button className="parent-disconnect-btn">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Déconnexion</span>}
-          </button>
-        </div>
-      </aside>
-      <main className="parent-main-content">
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={handleLogout}
+        userData={userData}
+      />
+
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <main className={`parent-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="parent-header">
-          <button className="parent-toggle-sidebar-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          <button 
+            className="parent-toggle-sidebar-btn mobile-menu-btn"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle Sidebar"
+          >
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <h1 className="parent-page-title">Mes Enfants</h1>
+          <div className="parent-header-actions">
+            <button className="parent-notif-btn" aria-label="Notifications">
+              <Bell size={20} />
+              <span className="notification-badge"></span>
+            </button>
+          </div>
         </header>
+
         <div className="parent-children-content">
+          <div className="parent-children-header">
+            <p className="parent-children-subtitle">
+              Consultez les informations de vos enfants inscrits
+            </p>
+          </div>
+
           <div className="parent-children-grid">
             {childrenData.map(child => (
               <div className="parent-children-card" key={child.id}>
-                <div className="parent-children-avatar">
-                  <User size={32} />
-                </div>
-                <div className="parent-children-info">
-                  <h4 className="parent-children-name">{child.name}</h4>
-                  <p className="parent-children-class">{child.class}</p>
-                  <span className="parent-children-status active">
+                <div className="child-card-header">
+                  <div className="child-avatar">
+                    <User size={32} />
+                  </div>
+                  <span className="child-status-badge">
+                    <CheckCircle size={14} />
                     Actif
                   </span>
                 </div>
-                <button className="parent-children-details-btn" onClick={() => openChildModal(child)}>
-                  Voir les détails
-                </button>
+                <div className="child-card-body">
+                  <h3 className="child-name">{child.name}</h3>
+                  <div className="child-info">
+                    <div className="child-info-item">
+                      <GraduationCap size={16} />
+                      <span>{child.class}</span>
+                    </div>
+                    <div className="child-info-item">
+                      <Mail size={16} />
+                      <span>{child.email}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="child-card-footer">
+                  <button 
+                    className="child-details-btn" 
+                    onClick={() => openChildModal(child)}
+                  >
+                    Voir les détails
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </main>
-      {/* Modal details for child */}
+
+      {/* Modal */}
       {showModal && selectedChild && (
-        <div className="parent-children-modal-overlay">
+        <div className="parent-children-modal-backdrop">
           <div className="parent-children-modal">
-            <div className="parent-children-modal-header">
-              <h2>Détails de l'étudiant</h2>
-              <button className="parent-children-modal-close" onClick={closeChildModal}>
-                <X size={24} />
-              </button>
-            </div>
+            <button 
+              className="parent-children-modal-close" 
+              onClick={closeChildModal}
+            >
+              <X size={22} />
+            </button>
+            <h3 className="parent-children-modal-title">
+              <User size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#5eead4"}} />
+              Détails de l'étudiant
+            </h3>
             <div className="parent-children-modal-body">
-              <div className="parent-children-modal-row">
-                <span className="label">Nom :</span>
+              <div className="modal-field">
+                <strong>Nom complet :</strong>
                 <span>{selectedChild.name}</span>
               </div>
-              <div className="parent-children-modal-row">
-                <span className="label">Classe :</span>
+              <div className="modal-field">
+                <strong>Classe :</strong>
                 <span>{selectedChild.class}</span>
               </div>
-              <div className="parent-children-modal-row">
-                <span className="label">Date de naissance :</span>
+              <div className="modal-field">
+                <strong>Année scolaire :</strong>
+                <span>{selectedChild.year}</span>
+              </div>
+              <div className="modal-field">
+                <strong>Date de naissance :</strong>
                 <span>{selectedChild.birthDate}</span>
               </div>
-              <div className="parent-children-modal-row">
-                <span className="label">Matricule :</span>
+              <div className="modal-field">
+                <strong>Matricule :</strong>
                 <span>{selectedChild.matricule}</span>
               </div>
-              <div className="parent-children-modal-row">
-                <span className="label">Email :</span>
+              <div className="modal-field">
+                <strong>Email :</strong>
                 <span>{selectedChild.email}</span>
               </div>
-              <div className="parent-children-modal-row">
-                <span className="label">Statut :</span>
-                <span className="parent-children-status active">Actif</span>
+              <div className="modal-field">
+                <strong>Statut :</strong>
+                <span style={{
+                  padding: '0.3rem 0.8rem',
+                  borderRadius: '999px',
+                  background: '#10b9811a',
+                  color: '#10b981',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}>
+                  <CheckCircle size={14} />
+                  Actif
+                </span>
               </div>
             </div>
-            <div className="parent-children-modal-footer">
-              <button className="parent-children-modal-close-btn" onClick={closeChildModal}>
-                Fermer
-              </button>
-            </div>
+            <button 
+              className="parent-children-modal-close-btn" 
+              onClick={closeChildModal}
+            >
+              Fermer
+            </button>
           </div>
         </div>
       )}

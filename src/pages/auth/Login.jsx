@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Check } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import '../../css/Login.css';
 import logo from '../../assets/Logo/Logo.png'; 
@@ -9,6 +9,15 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showVerifyCode, setShowVerifyCode] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate(); 
   
   useEffect(() => {
@@ -121,71 +130,283 @@ const Login = () => {
     navigate("/personnel");
   };
 
+  const handleForgotPassword = (e) => {
+    e.preventDefault();
+    console.log('Sending code to:', forgotEmail);
+    // Simulate sending code
+    setShowForgotPassword(false);
+    setShowVerifyCode(true);
+  };
+
+  const handleVerifyCode = (e) => {
+    e.preventDefault();
+    console.log('Verifying code:', verificationCode);
+    // Simulate code verification
+    setShowVerifyCode(false);
+    setShowResetPassword(true);
+  };
+
+  const handleResetPassword = (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmNewPassword) {
+      alert('Les mots de passe ne correspondent pas');
+      return;
+    }
+    console.log('Password reset successful');
+    // Reset all states
+    setShowResetPassword(false);
+    setForgotEmail('');
+    setVerificationCode('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    alert('Mot de passe réinitialisé avec succès!');
+  };
+
+  const handleBackToLogin = () => {
+    setShowForgotPassword(false);
+    setShowVerifyCode(false);
+    setShowResetPassword(false);
+    setForgotEmail('');
+    setVerificationCode('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+  };
+
   return (
     <div className="login-container">
-      <canvas ref={canvasRef} className="login-canvas-bg" />
+      <canvas ref={canvasRef} className="logingin-canvas-bg" />
       <div className="login-wrapper">
         <div className="login-content">
           <div className="login-glow-effect"></div>
           <div className="login-card">
-            <div className="login-header">
-              <div>
-                <div className="login-logo">
-                  <img src={logo} alt="Ynov Logo" className="login-logo-img" />
+            {/* Login Form */}
+            {!showForgotPassword && !showVerifyCode && !showResetPassword && (
+              <>
+                <div className="login-header">
+                  <div>
+                    <div className="login-logo">
+                      <img src={logo} alt="Ynov Logo" className="login-logo-img" />
+                    </div>
+                  </div>
+                  <h1 className="login-title">Ynov Campus</h1>
+                  <p className="login-subtitle">Connectez-vous à votre espace</p>
                 </div>
-              </div>
-              <h1 className="login-title">Ynov Campus</h1>
-              <p className="login-subtitle">Connectez-vous à votre espace</p>
-            </div>
 
-            <div className="login-form">
-              <div className="login-form-group">
-                <label className="login-label">Email</label>
-                <div className="login-input-wrapper">
-                  <Mail className="login-input-icon" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="login-input"
-                    placeholder="votre.email@ynov.com"
-                  />
-                </div>
-              </div>
+                <div className="login-form">
+                  <div className="login-form-group">
+                    <label className="login-label">Email</label>
+                    <div className="login-input-wrapper">
+                      <Mail className="login-input-icon" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="login-input"
+                        placeholder="votre.email@ynov.com"
+                      />
+                    </div>
+                  </div>
 
-              <div className="login-form-group">
-                <label className="login-label">Mot de passe</label>
-                <div className="login-input-wrapper">
-                  <Lock className="login-input-icon" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="login-input"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="login-toggle-password"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  <div className="login-form-group">
+                    <label className="login-label">Mot de passe</label>
+                    <div className="login-input-wrapper">
+                      <Lock className="login-input-icon" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="login-input"
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="login-toggle-password"
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="login-form-options">
+                    <label className="login-remember-me">
+                      <input type="checkbox" className="login-checkbox" />
+                      Se souvenir de moi
+                    </label>
+                    <button 
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="login-forgot-password"
+                    >
+                      Mot de passe oublié?
+                    </button>
+                  </div>
+
+                  <button onClick={handleSubmit} className="login-submit-btn">
+                    Se connecter
                   </button>
                 </div>
-              </div>
+              </>
+            )}
 
-              <div className="login-form-options">
-                <label className="login-remember-me">
-                  <input type="checkbox" className="login-checkbox" />
-                  Se souvenir de moi
-                </label>
-                <button className="login-forgot-password">Mot de passe oublié?</button>
-              </div>
+            {/* Forgot Password - Email Input */}
+            {showForgotPassword && (
+              <>
+                <div className="login-header">
+                  <button 
+                    onClick={handleBackToLogin}
+                    className="login-back-btn"
+                  >
+                    <ArrowLeft size={20} />
+                    Retour
+                  </button>
+                  <h1 className="login-title">Mot de passe oublié?</h1>
+                  <p className="login-subtitle">
+                    Entrez votre email pour recevoir un code de vérification
+                  </p>
+                </div>
 
-              <button onClick={handleSubmit} className="login-submit-btn">
-                Se connecter
-              </button>
-            </div>
+                <form onSubmit={handleForgotPassword} className="login-form">
+                  <div className="login-form-group">
+                    <label className="login-label">Email</label>
+                    <div className="login-input-wrapper">
+                      <Mail className="login-input-icon" />
+                      <input
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        className="login-input"
+                        placeholder="votre.email@ynov.com"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="login-submit-btn">
+                    Envoyer le code
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* Verify Code */}
+            {showVerifyCode && (
+              <>
+                <div className="login-header">
+                  <button 
+                    onClick={handleBackToLogin}
+                    className="login-back-btn"
+                  >
+                    <ArrowLeft size={20} />
+                    Retour
+                  </button>
+                  <h1 className="login-title">Code de vérification</h1>
+                  <p className="login-subtitle">
+                    Entrez le code envoyé à {forgotEmail}
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyCode} className="login-form">
+                  <div className="login-form-group">
+                    <label className="login-label">Code de vérification</label>
+                    <div className="login-input-wrapper">
+                      <Lock className="login-input-icon" />
+                      <input
+                        type="text"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                        className="login-input"
+                        placeholder="000000"
+                        maxLength="6"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="login-submit-btn">
+                    Vérifier le code
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => alert('Code renvoyé!')}
+                    className="login-resend-btn"
+                  >
+                    Renvoyer le code
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* Reset Password */}
+            {showResetPassword && (
+              <>
+                <div className="login-header">
+                  <button 
+                    onClick={handleBackToLogin}
+                    className="login-back-btn"
+                  >
+                    <ArrowLeft size={20} />
+                    Retour
+                  </button>
+                  <h1 className="login-title">Nouveau mot de passe</h1>
+                  <p className="login-subtitle">
+                    Créez un nouveau mot de passe sécurisé
+                  </p>
+                </div>
+
+                <form onSubmit={handleResetPassword} className="login-form">
+                  <div className="login-form-group">
+                    <label className="login-label">Nouveau mot de passe</label>
+                    <div className="login-input-wrapper">
+                      <Lock className="login-input-icon" />
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="login-input"
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="login-toggle-password"
+                      >
+                        {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="login-form-group">
+                    <label className="login-label">Confirmer le mot de passe</label>
+                    <div className="login-input-wrapper">
+                      <Lock className="login-input-icon" />
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        className="login-input"
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="login-toggle-password"
+                      >
+                        {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="submit" className="login-submit-btn">
+                    <Check size={20} style={{marginRight: '8px'}} />
+                    Réinitialiser le mot de passe
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       </div>

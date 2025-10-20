@@ -268,3 +268,57 @@
     height: 20%;
   }
 }
+/* Back Button */
+.login-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #5eead4;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  transition: all 0.3s;
+}
+
+.login-back-btn:hover {
+  color: #99f6e4;
+  transform: translateX(-5px);
+}
+
+/* Resend Button */
+.login-resend-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(51, 65, 85, 0.5);
+  color: #5eead4;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: 1px solid #475569;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 0.5rem;
+}
+
+.login-resend-btn:hover {
+  background: rgba(51, 65, 85, 0.8);
+  border-color: #5eead4;
+}
+
+/* Submit button with icon */
+.login-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Verification code input styling */
+.login-input[maxLength="6"] {
+  text-align: center;
+  font-size: 1.5rem;
+  letter-spacing: 0.5rem;
+  font-weight: 600;
+}

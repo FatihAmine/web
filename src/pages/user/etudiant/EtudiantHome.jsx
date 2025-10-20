@@ -1,40 +1,70 @@
 import React, { useState } from 'react';
+import Sidebar from '../../component/sidebaretudiant';
 import { 
-  Home, 
+  Bell,
   FileText, 
-  Upload, 
   Clock, 
-  Bell, 
-  Settings, 
-  LogOut, 
   Menu, 
   X,
   Download,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  TrendingUp
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 import '../../../css/etudiant/EtudiantHome.css';
 
 const StudentDashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const [activeTab, setActiveTab] = useState('dashboard');
   const navigate = useNavigate();
   
   const userData = {
     firstName: "Mohamed",
     lastName: "Alami",
+    role: "Étudiant",
     profilePic: "https://ui-avatars.com/api/?name=Mohamed+Alami&background=17766e&color=fff&size=200"
   };
 
-  const stats = {
-    totalDocuments: 24,
-    pendingRequests: 3,
-    approvedRequests: 15,
-    rejectedRequests: 2
-  };
+  const stats = [
+    {
+      id: 1,
+      title: 'Total Documents',
+      value: '24',
+      icon: <FileText size={24} />,
+      color: '#5eead4',
+      change: '+3'
+    },
+    {
+      id: 2,
+      title: 'Demandes en attente',
+      value: '3',
+      icon: <Clock size={24} />,
+      color: '#f59e0b',
+      change: '+1'
+    },
+    {
+      id: 3,
+      title: 'Demandes approuvées',
+      value: '15',
+      icon: <CheckCircle size={24} />,
+      color: '#10b981',
+      change: '+5'
+    },
+    {
+      id: 4,
+      title: 'Demandes rejetées',
+      value: '2',
+      icon: <XCircle size={24} />,
+      color: '#ef4444',
+      change: '0'
+    }
+  ];
 
   const recentDocuments = [
     { id: 1, name: "Certificat de Scolarité", type: "Certificat", date: "2025-10-05", status: "approved" },
@@ -49,21 +79,16 @@ const StudentDashboard = () => {
     { id: 3, document: "Certificat de Stage", requestDate: "2025-10-01", status: "approved" }
   ];
 
-  const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/etudiant' },
-    { id: 'documents', icon: FileText, label: 'Mes Documents', path: '/etudiant/documents' },
-    { id: 'requests', icon: Clock, label: 'Mes Demandes', path: '/etudiant/demandes' },
-    { id: 'upload', icon: Upload, label: 'Téléverser', path: '/etudiant/upload' },
-    { id: 'notifications', icon: Bell, label: 'Notifications', path: '/etudiant/notifications' },
-    { id: 'settings', icon: Settings, label: 'Paramètres', path: '/etudiant/settings' }
-  ];
+  const handleLogout = () => {
+    navigate('/etudiant/login');
+  };
 
   const getStatusIcon = (status) => {
     switch(status) {
-      case 'approved': return <CheckCircle size={16} />;
-      case 'rejected': return <XCircle size={16} />;
-      case 'pending': return <AlertCircle size={16} />;
-      default: return <Clock size={16} />;
+      case 'approved': return CheckCircle;
+      case 'rejected': return XCircle;
+      case 'pending': return AlertCircle;
+      default: return Clock;
     }
   };
 
@@ -87,149 +112,134 @@ const StudentDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
-      <aside className={`dashboard-sidebar ${sidebarOpen ? 'dashboard-sidebar-open' : 'dashboard-sidebar-closed'}`}>
-        <div className="dashboard-sidebar-content">
-          <div className="dashboard-profile-section">
-            <img src={userData.profilePic} alt="Profile" className="dashboard-profile-pic" />
-            {sidebarOpen && (
-              <div className="dashboard-profile-info">
-                <h3 className="dashboard-profile-name">{userData.firstName} {userData.lastName}</h3>
-                <p className="dashboard-profile-role">Étudiant</p>
-              </div>
-            )}
-          </div>
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={handleLogout}
+        userData={userData}
+      />
 
-          <nav className="dashboard-menu">
-            {menuItems.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    navigate(item.path); // navigate to the route
-                  }}
-                  className={`student-requests-menu-item ${activeTab === item.id ? 'student-requests-menu-item-active' : ''}`}
-                  title={!sidebarOpen ? item.label : ''}
-                >
-                <item.icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
-              </button>
-            ))}
-          </nav>
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-          <button className="dashboard-disconnect-btn">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Déconnexion</span>}
-          </button>
-        </div>
-      </aside>
-
-      <main className="dashboard-main-content">
+      <main className={`dashboard-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="dashboard-header">
           <button 
-            className="dashboard-toggle-sidebar-btn"
+            className="dashboard-toggle-sidebar-btn mobile-menu-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle Sidebar"
           >
-            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h1 className="dashboard-page-title">
-            {menuItems.find(item => item.id === activeTab)?.label}
-          </h1>
+          <h1 className="dashboard-page-title">Tableau de bord</h1>
+          <div className="dashboard-header-actions">
+            <button className="dashboard-notif-btn" aria-label="Notifications">
+              <Bell size={20} />
+              <span className="notification-badge"></span>
+            </button>
+          </div>
         </header>
 
         <div className="dashboard-content">
           {/* Stats Cards */}
           <div className="dashboard-stats-grid">
-            <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon" style={{background: 'linear-gradient(135deg, #17766e, #14635c)'}}>
-                <FileText size={24} />
+            {stats.map((stat) => (
+              <div key={stat.id} className="dashboard-stat-card">
+                <div className="stat-icon" style={{background: `${stat.color}1a`, color: stat.color}}>
+                  {stat.icon}
+                </div>
+                <div className="stat-content">
+                  <p className="stat-label">{stat.title}</p>
+                  <h3 className="stat-value">{stat.value}</h3>
+                  <div className="stat-change" style={{color: '#10b981'}}>
+                    +{stat.change} ce mois
+                  </div>
+                </div>
               </div>
-              <div className="dashboard-stat-info">
-                <p className="dashboard-stat-label">Total Documents</p>
-                <h2 className="dashboard-stat-value">{stats.totalDocuments}</h2>
-              </div>
-            </div>
-
-            <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon" style={{background: 'linear-gradient(135deg, #f59e0b, #d97706)'}}>
-                <Clock size={24} />
-              </div>
-              <div className="dashboard-stat-info">
-                <p className="dashboard-stat-label">Demandes en attente</p>
-                <h2 className="dashboard-stat-value">{stats.pendingRequests}</h2>
-              </div>
-            </div>
-
-            <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon" style={{background: 'linear-gradient(135deg, #10b981, #059669)'}}>
-                <CheckCircle size={24} />
-              </div>
-              <div className="dashboard-stat-info">
-                <p className="dashboard-stat-label">Demandes approuvées</p>
-                <h2 className="dashboard-stat-value">{stats.approvedRequests}</h2>
-              </div>
-            </div>
-
-            <div className="dashboard-stat-card">
-              <div className="dashboard-stat-icon" style={{background: 'linear-gradient(135deg, #ef4444, #dc2626)'}}>
-                <XCircle size={24} />
-              </div>
-              <div className="dashboard-stat-info">
-                <p className="dashboard-stat-label">Demandes rejetées</p>
-                <h2 className="dashboard-stat-value">{stats.rejectedRequests}</h2>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Documents & Requests */}
+          {/* Documents & Requests Grid */}
           <div className="dashboard-content-grid">
+            {/* Recent Documents */}
             <div className="dashboard-card">
               <div className="dashboard-card-header">
                 <h3 className="dashboard-card-title">Documents récents</h3>
-                <button className="dashboard-view-all-btn">Voir tout</button>
+                <button 
+                  className="dashboard-view-all-btn"
+                  onClick={() => navigate('/etudiant/documents')}
+                >
+                  Voir tout
+                </button>
               </div>
               <div className="dashboard-documents-list">
-                {recentDocuments.map(doc => (
-                  <div key={doc.id} className="dashboard-document-item">
-                    <div className="dashboard-document-icon">
-                      <FileText size={20} />
+                {recentDocuments.map(doc => {
+                  const StatusIcon = getStatusIcon(doc.status);
+                  return (
+                    <div key={doc.id} className="dashboard-document-item">
+                      <div className="dashboard-document-icon">
+                        <FileText size={20} />
+                      </div>
+                      <div className="dashboard-document-info">
+                        <h4 className="dashboard-document-name">{doc.name}</h4>
+                        <p className="dashboard-document-meta">{doc.type} • {doc.date}</p>
+                      </div>
+                      <div 
+                        className="dashboard-document-status" 
+                        style={{color: getStatusColor(doc.status)}}
+                      >
+                        <StatusIcon size={16} />
+                      </div>
+                      {doc.status === 'approved' && (
+                        <button className="dashboard-download-btn">
+                          <Download size={18} />
+                        </button>
+                      )}
                     </div>
-                    <div className="dashboard-document-info">
-                      <h4 className="dashboard-document-name">{doc.name}</h4>
-                      <p className="dashboard-document-meta">{doc.type} • {doc.date}</p>
-                    </div>
-                    <div className="dashboard-document-status" style={{color: getStatusColor(doc.status)}}>
-                      {getStatusIcon(doc.status)}
-                    </div>
-                    <button className="dashboard-download-btn">
-                      <Download size={18} />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
+            {/* Pending Requests */}
             <div className="dashboard-card">
               <div className="dashboard-card-header">
                 <h3 className="dashboard-card-title">Demandes en cours</h3>
-                <button className="dashboard-view-all-btn">Voir tout</button>
+                <button 
+                  className="dashboard-view-all-btn"
+                  onClick={() => navigate('/etudiant/demandes')}
+                >
+                  Voir tout
+                </button>
               </div>
               <div className="dashboard-requests-list">
-                {pendingRequests.map(req => (
-                  <div key={req.id} className="dashboard-request-item">
-                    <div className="dashboard-request-info">
-                      <h4 className="dashboard-request-name">{req.document}</h4>
-                      <p className="dashboard-request-date">Demandé le {req.requestDate}</p>
+                {pendingRequests.map(req => {
+                  const StatusIcon = getStatusIcon(req.status);
+                  return (
+                    <div key={req.id} className="dashboard-request-item">
+                      <div className="dashboard-request-info">
+                        <h4 className="dashboard-request-name">{req.document}</h4>
+                        <p className="dashboard-request-date">Demandé le {req.requestDate}</p>
+                      </div>
+                      <div 
+                        className="dashboard-status-badge" 
+                        style={{
+                          background: `${getStatusColor(req.status)}1a`,
+                          color: getStatusColor(req.status)
+                        }}
+                      >
+                        <StatusIcon size={16} />
+                        <span>{getStatusText(req.status)}</span>
+                      </div>
                     </div>
-                    <div className="dashboard-status-badge" style={{
-                      background: `${getStatusColor(req.status)}20`,
-                      color: getStatusColor(req.status)
-                    }}>
-                      {getStatusIcon(req.status)}
-                      <span>{getStatusText(req.status)}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

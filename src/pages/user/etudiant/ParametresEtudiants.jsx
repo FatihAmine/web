@@ -1,30 +1,29 @@
 import React, { useState } from 'react';
+import Sidebar from '../../component/sidebaretudiant';
 import {
-  Home,
-  FileText,
-  Upload,
-  Clock,
   Bell,
-  Settings,
-  LogOut,
   Menu,
   X,
   User,
   Lock,
   Globe,
   Save,
+  Edit
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/etudiant/ParametresEtudiants.css';
 
 const TABS = [
-  { key: 'profil', label: 'Profil', icon: <User size={18} /> },
-  { key: 'securite', label: 'Sécurité', icon: <Lock size={18} /> },
-  { key: 'prefs', label: 'Préférences', icon: <Globe size={18} /> },
+  { key: 'profil', label: 'Profil', icon: User },
+  { key: 'securite', label: 'Sécurité', icon: Lock },
 ];
 
 const ParametresEtudiants = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const [activeTab, setActiveTab] = useState('settings');
   const [currentSection, setCurrentSection] = useState('profil');
   const [editing, setEditing] = useState(false);
@@ -33,19 +32,22 @@ const ParametresEtudiants = () => {
     lastName: "Alami",
     email: "mohamed.alami@ynov.ma",
     language: "fr",
+    twoFactor: "off",
     password: "",
     confirmPassword: ""
   });
   const navigate = useNavigate();
 
-  const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/etudiant' },
-    { id: 'documents', icon: FileText, label: 'Mes Documents', path: '/etudiant/documents' },
-    { id: 'requests', icon: Clock, label: 'Mes Demandes', path: '/etudiant/demandes' },
-    { id: 'upload', icon: Upload, label: 'Téléverser', path: '/etudiant/upload' },
-    { id: 'notifications', icon: Bell, label: 'Notifications', path: '/etudiant/notifications' },
-    { id: 'settings', icon: Settings, label: 'Paramètres', path: '/etudiant/settings' }
-  ];
+  const userData = {
+    firstName: form.firstName,
+    lastName: form.lastName,
+    role: "Étudiant",
+    profilePic: `https://ui-avatars.com/api/?name=${form.firstName}+${form.lastName}&background=17766e&color=fff&size=200`
+  };
+
+  const handleLogout = () => {
+    navigate('/etudiant/login');
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,79 +57,71 @@ const ParametresEtudiants = () => {
   const handleSave = (e) => {
     e.preventDefault();
     setEditing(false);
-    // Simulate save logic here
+    console.log('Settings saved:', form);
   };
 
   return (
     <div className="params-page">
-      {/* Sidebar */}
-      <aside className={`params-sidebar ${sidebarOpen ? 'params-sidebar-open' : 'params-sidebar-closed'}`}>
-        <div className="params-sidebar-content">
-          <div className="params-profile-section">
-            <img
-              src={`https://ui-avatars.com/api/?name=${form.firstName}+${form.lastName}&background=17766e&color=fff&size=200`}
-              alt="Profile"
-              className="params-profile-pic"
-            />
-            {sidebarOpen && (
-              <div className="params-profile-info">
-                <h3 className="params-profile-name">{form.firstName} {form.lastName}</h3>
-                <p className="params-profile-role">Étudiant</p>
-              </div>
-            )}
-          </div>
-          <nav className="params-menu">
-            {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  navigate(item.path);
-                }}
-                className={`params-menu-item ${activeTab === item.id ? 'params-menu-item-active' : ''}`}
-                title={!sidebarOpen ? item.label : ''}
-              >
-                <item.icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
-              </button>
-            ))}
-          </nav>
-          <button className="params-disconnect-btn">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Déconnexion</span>}
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={handleLogout}
+        userData={userData}
+      />
 
-      {/* Main Content */}
-      <main className="params-main-content">
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <main className={`params-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="params-page-header">
           <button
-            className="params-toggle-sidebar-btn"
+            className="params-toggle-sidebar-btn mobile-menu-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle Sidebar"
           >
-            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <h1 className="params-page-title">Paramètres du compte</h1>
+          <div className="params-header-actions">
+            <button className="params-notif-btn" aria-label="Notifications">
+              <Bell size={20} />
+              <span className="notification-badge"></span>
+            </button>
+          </div>
         </header>
+
         <div className="params-container">
+          {/* Tabs */}
           <div className="params-tabs">
-            {TABS.map(tab => (
-              <button
-                key={tab.key}
-                className={`params-tab-btn${currentSection === tab.key ? ' active' : ''}`}
-                onClick={() => setCurrentSection(tab.key)}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
+            {TABS.map(tab => {
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.key}
+                  className={`params-tab-btn${currentSection === tab.key ? ' active' : ''}`}
+                  onClick={() => setCurrentSection(tab.key)}
+                >
+                  <TabIcon size={18} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
+          {/* Form Card */}
           <form className="params-form-card" onSubmit={handleSave}>
-            {currentSection === 'profil' &&
+            {currentSection === 'profil' && (
               <div className="params-section">
-                <h2 className="params-form-title">Profil étudiant</h2>
+                <h2 className="params-form-title">
+                  <User size={20} style={{verticalAlign: 'middle', marginRight: '8px', color: '#5eead4'}} />
+                  Profil étudiant
+                </h2>
                 <div className="params-form-block">
                   <div className="params-form-group">
                     <label className="params-form-label">Prénom</label>
@@ -162,13 +156,18 @@ const ParametresEtudiants = () => {
                       className="params-form-input"
                       required
                     />
+                    <span className="params-form-hint">L'email ne peut pas être modifié</span>
                   </div>
                 </div>
               </div>
-            }
-            {currentSection === 'securite' &&
+            )}
+
+            {currentSection === 'securite' && (
               <div className="params-section">
-                <h2 className="params-form-title">Sécurité</h2>
+                <h2 className="params-form-title">
+                  <Lock size={20} style={{verticalAlign: 'middle', marginRight: '8px', color: '#5eead4'}} />
+                  Sécurité du compte
+                </h2>
                 <div className="params-form-block">
                   <div className="params-form-group">
                     <label className="params-form-label">Nouveau mot de passe</label>
@@ -179,7 +178,7 @@ const ParametresEtudiants = () => {
                       onChange={handleChange}
                       disabled={!editing}
                       className="params-form-input"
-                      placeholder="Nouveau mot de passe"
+                      placeholder="••••••••"
                     />
                   </div>
                   <div className="params-form-group">
@@ -191,30 +190,36 @@ const ParametresEtudiants = () => {
                       onChange={handleChange}
                       disabled={!editing}
                       className="params-form-input"
-                      placeholder="Confirmer mot de passe"
+                      placeholder="••••••••"
                     />
                   </div>
                   <div className="params-form-group">
-                    <label className="params-form-label">2FA</label>
+                    <label className="params-form-label">Authentification à deux facteurs (2FA)</label>
                     <select
-                      name="2fa"
-                      className="params-form-select"
+                      name="twoFactor"
+                      value={form.twoFactor}
+                      onChange={handleChange}
                       disabled={!editing}
+                      className="params-form-select"
                     >
                       <option value="off">Désactivé</option>
-                      <option value="email">Email</option>
-                      <option value="app">App Authenticator</option>
+                      <option value="email">Par Email</option>
+                      <option value="app">Application Authenticator</option>
                     </select>
                   </div>
                 </div>
               </div>
-            }
-            {currentSection === 'prefs' &&
+            )}
+
+            {currentSection === 'prefs' && (
               <div className="params-section">
-                <h2 className="params-form-title">Préférences</h2>
+                <h2 className="params-form-title">
+                  <Globe size={20} style={{verticalAlign: 'middle', marginRight: '8px', color: '#5eead4'}} />
+                  Préférences
+                </h2>
                 <div className="params-form-block">
                   <div className="params-form-group">
-                    <label className="params-form-label">Langue</label>
+                    <label className="params-form-label">Langue de l'interface</label>
                     <select
                       name="language"
                       value={form.language}
@@ -224,11 +229,13 @@ const ParametresEtudiants = () => {
                     >
                       <option value="fr">Français</option>
                       <option value="en">English</option>
+                      <option value="ar">العربية</option>
                     </select>
                   </div>
                 </div>
               </div>
-            }
+            )}
+
             <div className="params-form-footer">
               {!editing ? (
                 <button
@@ -236,17 +243,38 @@ const ParametresEtudiants = () => {
                   className="params-edit-btn"
                   onClick={() => setEditing(true)}
                 >
-                  <Settings size={18} />
-                  Modifier
+                  <Edit size={18} />
+                  <span>Modifier</span>
                 </button>
               ) : (
-                <button
-                  type="submit"
-                  className="params-save-btn"
-                >
-                  <Save size={18} />
-                  Sauvegarder
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="params-cancel-btn"
+                    onClick={() => {
+                      setEditing(false);
+                      setForm({
+                        firstName: "Mohamed",
+                        lastName: "Alami",
+                        email: "mohamed.alami@ynov.ma",
+                        language: "fr",
+                        twoFactor: "off",
+                        password: "",
+                        confirmPassword: ""
+                      });
+                    }}
+                  >
+                    <X size={18} />
+                    <span>Annuler</span>
+                  </button>
+                  <button
+                    type="submit"
+                    className="params-save-btn"
+                  >
+                    <Save size={18} />
+                    <span>Sauvegarder</span>
+                  </button>
+                </>
               )}
             </div>
           </form>

@@ -1,15 +1,9 @@
-// src/components/Etudiant/MesDocuments.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
+import Sidebar from '../../component/sidebaretudiant';
+import CustomDropdown from '../../component/CustomDropdown';
 import {
-  Home,
-  FileText,
-  Upload,
-  Clock,
-  CheckCircle,
-  XCircle,
   Bell,
-  Settings,
-  LogOut,
+  FileText,
   Menu,
   X,
   Search,
@@ -17,46 +11,34 @@ import {
   Eye,
   Download,
   Calendar,
+  CheckCircle,
+  XCircle,
+  Clock,
+  TrendingUp
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/etudiant/DocumentEtudiants.css';
 
 const MesDocuments = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const [activeTab, setActiveTab] = useState('documents');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [filterType, setFilterType] = useState('');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [activeDocument, setActiveDocument] = useState(null);
 
   const navigate = useNavigate();
-  const filterRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterRef.current && !filterRef.current.contains(event.target)) {
-        setFilterDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const userData = {
     firstName: "Mohamed",
     lastName: "Alami",
+    role: "Étudiant",
     profilePic: "https://ui-avatars.com/api/?name=Mohamed+Alami&background=17766e&color=fff&size=200"
   };
-
-  const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/etudiant' },
-    { id: 'documents', icon: FileText, label: 'Mes Documents', path: '/etudiant/documents' },
-    { id: 'requests', icon: Clock, label: 'Mes Demandes', path: '/etudiant/demandes' },
-    { id: 'upload', icon: Upload, label: 'Téléverser', path: '/etudiant/upload' },
-    { id: 'notifications', icon: Bell, label: 'Notifications', path: '/etudiant/notifications' },
-    { id: 'settings', icon: Settings, label: 'Paramètres', path: '/etudiant/settings' }
-  ];
 
   const documents = [
     {
@@ -87,14 +69,6 @@ const MesDocuments = () => {
       downloadUrl: "#",
     },
     {
-      id: 4,
-      title: "Convention de Stage",
-      docType: "Convention",
-      uploadDate: "2025-06-16",
-      year: "2025",
-      status: "pending",
-    },
-    {
       id: 5,
       title: "Attestation d'Inscription",
       docType: "Attestation",
@@ -102,275 +76,285 @@ const MesDocuments = () => {
       year: "2024",
       status: "valid",
       downloadUrl: "#",
+    },
+    {
+      id: 6,
+      title: "Relevé de Notes S2",
+      docType: "Bulletin",
+      uploadDate: "2024-06-30",
+      year: "2024",
+      status: "valid",
+      downloadUrl: "#",
     }
   ];
 
-  const typeOptions = [
-    "all",
-    "Attestation",
-    "Bulletin",
-    "Certificat",
-    "Convention"
+  const filterOptions = [
+    { value: '', label: 'Tous les types', icon: Filter, color: '#5eead4' },
+    { value: 'Attestation', label: 'Attestation', icon: FileText, color: '#10b981' },
+    { value: 'Bulletin', label: 'Bulletin', icon: FileText, color: '#3b82f6' },
+    { value: 'Certificat', label: 'Certificat', icon: FileText, color: '#8b5cf6' },
+    { value: 'Convention', label: 'Convention', icon: FileText, color: '#f59e0b' }
   ];
+
+  const handleLogout = () => {
+    navigate('/etudiant/login');
+  };
 
   const getDocStatusIcon = status => {
     switch (status) {
-      case "valid":
-        return <CheckCircle size={20} />;
-      case "pending":
-        return <Clock size={20} />;
-      case "rejected":
-        return <XCircle size={20} />;
-      default:
-        return <CheckCircle size={20} />;
+      case "valid": return CheckCircle;
+      case "pending": return Clock;
+      case "rejected": return XCircle;
+      default: return CheckCircle;
     }
   };
 
   const getDocStatusColor = status => {
     switch (status) {
-      case "valid":
-        return '#10b981';
-      case "pending":
-        return '#f59e0b';
-      case "rejected":
-        return '#ef4444';
-      default:
-        return '#6b7280';
+      case "valid": return '#10b981';
+      case "pending": return '#f59e0b';
+      case "rejected": return '#ef4444';
+      default: return '#6b7280';
     }
   };
 
   const getDocStatusText = status => {
     switch (status) {
-      case "valid":
-        return "Valide";
-      case "pending":
-        return "En traitement";
-      case "rejected":
-        return "Rejeté";
-      default:
-        return "Valide";
+      case "valid": return "Valide";
+      case "pending": return "En traitement";
+      case "rejected": return "Rejeté";
+      default: return "Valide";
     }
   };
 
   const filteredDocuments = documents.filter(doc => {
     const searchOk = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const filterOk = filterType === 'all' || doc.docType === filterType;
+    const filterOk = filterType === '' || doc.docType === filterType;
     return searchOk && filterOk;
   });
 
+  // Stats
+  const totalDocs = documents.length;
+  const validDocs = documents.filter(d => d.status === 'valid').length;
+  const pendingDocs = documents.filter(d => d.status === 'pending').length;
+
   return (
     <div className="mes-documents-page">
-      {/* Sidebar */}
-      <aside className={`mes-documents-sidebar ${sidebarOpen ? 'mes-documents-sidebar-open' : 'mes-documents-sidebar-closed'}`}>
-        <div className="mes-documents-sidebar-content">
-          <div className="mes-documents-profile-section">
-            <img src={userData.profilePic} alt="Profile" className="mes-documents-profile-pic" />
-            {sidebarOpen && (
-              <div className="mes-documents-profile-info">
-                <h3 className="mes-documents-profile-name">{userData.firstName} {userData.lastName}</h3>
-                <p className="mes-documents-profile-role">Étudiant</p>
-              </div>
-            )}
-          </div>
-          <nav className="mes-documents-menu">
-            {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  navigate(item.path);
-                }}
-                className={`mes-documents-menu-item ${activeTab === item.id ? 'mes-documents-menu-item-active' : ''}`}
-                title={!sidebarOpen ? item.label : ''}
-              >
-                <item.icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
-              </button>
-            ))}
-          </nav>
-          <button className="mes-documents-disconnect-btn">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Déconnexion</span>}
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={handleLogout}
+        userData={userData}
+      />
 
-      {/* Main Content */}
-      <main className="mes-documents-main-content">
-        {/* Header */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <main className={`mes-documents-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="mes-documents-page-header">
           <button
-            className="mes-documents-toggle-sidebar-btn"
+            className="mes-documents-toggle-sidebar-btn mobile-menu-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle Sidebar"
           >
-            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <h1 className="mes-documents-page-title">Mes Documents</h1>
+          <div className="mes-documents-header-actions">
+            <button className="mes-documents-notif-btn" aria-label="Notifications">
+              <Bell size={20} />
+              <span className="notification-badge"></span>
+            </button>
+          </div>
         </header>
+
         <div className="mes-documents-container">
-          <div className="mes-documents-header">
-            <div className="mes-documents-title-section">
-              <p className="mes-documents-subtitle">Accédez et téléchargez tous vos documents scolaires archivés</p>
+          {/* Stats Cards */}
+          <div className="mes-documents-stats-grid">
+            <div className="mes-documents-stat-card stat-total">
+              <div className="stat-icon">
+                <FileText size={24} />
+              </div>
+              <div className="stat-info">
+                <p className="stat-label">Total Documents</p>
+                <h3 className="stat-value">{totalDocs}</h3>
+              </div>
+            </div>
+            <div className="mes-documents-stat-card stat-valid">
+              <div className="stat-icon">
+                <CheckCircle size={24} />
+              </div>
+              <div className="stat-info">
+                <p className="stat-label">Valides</p>
+                <h3 className="stat-value">{validDocs}</h3>
+              </div>
+            </div>
+            <div className="mes-documents-stat-card stat-pending">
+              <div className="stat-icon">
+                <Clock size={24} />
+              </div>
+              <div className="stat-info">
+                <p className="stat-label">En Traitement</p>
+                <h3 className="stat-value">{pendingDocs}</h3>
+              </div>
             </div>
           </div>
 
           {/* Filters */}
           <div className="mes-documents-filters">
+            <CustomDropdown
+              options={filterOptions}
+              value={filterType}
+              onChange={setFilterType}
+              icon={Filter}
+            />
             <div className="mes-documents-search">
-              <Search className="mes-documents-search-icon" size={20} />
+              <Search size={18} />
               <input
                 type="text"
-                placeholder="Rechercher un document..."
+                placeholder="Rechercher documents..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="mes-documents-search-input"
               />
             </div>
-            {/* Custom filter dropdown */}
-            <div className="mes-documents-custom-filter" ref={filterRef}>
-              <button
-                className="mes-documents-filter-dropdown-btn"
-                onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-                aria-label="Filtrer par type"
-                type="button"
-              >
-                <Filter size={20} />
-                <span>
-                  {filterType === "all" ? "Tous les types" : filterType}
-                </span>
-                <span className={`mes-documents-filter-arrow ${filterDropdownOpen ? "open" : ""}`}></span>
-              </button>
-              {filterDropdownOpen && (
-                <ul className="mes-documents-filter-options">
-                  {typeOptions.map((type, i) => (
-                    <li
-                      key={i}
-                      className={`mes-documents-filter-option${type === filterType ? ' active' : ''}`}
-                      onClick={() => { setFilterType(type); setFilterDropdownOpen(false); }}
-                    >
-                      {type === "all" ? "Tous les types" : type}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </div>
 
-          {/* Documents List */}
-          <div className="mes-documents-list">
-            {filteredDocuments.map(doc => (
-              <div key={doc.id} className="mes-documents-card">
-                <div className="mes-documents-card-header">
-                  <div className="mes-documents-card-title-section">
-                    <h3 className="mes-documents-card-title">{doc.title}</h3>
-                    <span className="mes-documents-type">{doc.docType}</span>
-                  </div>
-                  <div
-                    className="mes-documents-status-badge"
-                    style={{
-                      background: `${getDocStatusColor(doc.status)}20`,
-                      color: getDocStatusColor(doc.status),
-                    }}>
-                    {getDocStatusIcon(doc.status)}
-                    <span>{getDocStatusText(doc.status)}</span>
-                  </div>
-                </div>
-                <div className="mes-documents-card-body">
-                  <div className="mes-documents-info-grid">
-                    <div className="mes-documents-info-item">
-                      <Calendar size={16} className="mes-documents-info-icon" />
-                      <div>
-                        <p className="mes-documents-info-label">Date d'archivage</p>
-                        <p className="mes-documents-info-value">{doc.uploadDate}</p>
-                      </div>
-                    </div>
-                    <div className="mes-documents-info-item">
-                      <FileText size={16} className="mes-documents-info-icon" />
-                      <div>
-                        <p className="mes-documents-info-label">Année</p>
-                        <p className="mes-documents-info-value">{doc.year}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="mes-documents-card-footer">
-                  <button
-                    className="mes-documents-action-btn mes-documents-view-btn"
-                    onClick={() => { setActiveDocument(doc); setShowDetailsModal(true); }}
-                  >
-                    <Eye size={18} />
-                    Détails
-                  </button>
-                  {doc.status === "valid" && doc.downloadUrl && (
-                    <button className="mes-documents-action-btn mes-documents-download-btn">
-                      <Download size={18} />
-                      Télécharger
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {filteredDocuments.length === 0 && (
+          {/* Documents Grid */}
+          <div className="mes-documents-grid">
+            {filteredDocuments.length === 0 ? (
               <div className="mes-documents-empty">
-                <FileText size={64} className="mes-documents-empty-icon" />
-                <h3 className="mes-documents-empty-title">Aucun document trouvé</h3>
-                <p className="mes-documents-empty-text">
-                  {searchTerm || filterType !== 'all'
+                <FileText size={64} />
+                <h3>Aucun document trouvé</h3>
+                <p>
+                  {searchTerm || filterType
                     ? "Essayez de modifier vos critères de recherche"
                     : "Aucun document archivé pour le moment"}
                 </p>
               </div>
+            ) : (
+              filteredDocuments.map(doc => {
+                const StatusIcon = getDocStatusIcon(doc.status);
+                return (
+                  <div key={doc.id} className="mes-documents-card">
+                    <div className="doc-card-header">
+                      <div className="doc-icon">
+                        <FileText size={20} />
+                      </div>
+                      <span 
+                        className="doc-status"
+                        style={{
+                          background: `${getDocStatusColor(doc.status)}1a`,
+                          color: getDocStatusColor(doc.status)
+                        }}
+                      >
+                        <StatusIcon size={16} />
+                        {getDocStatusText(doc.status)}
+                      </span>
+                    </div>
+                    <div className="doc-card-body">
+                      <h3 className="doc-title">{doc.title}</h3>
+                      <div className="doc-meta">
+                        <div className="doc-meta-item">
+                          <Calendar size={14} />
+                          <span>{doc.uploadDate}</span>
+                        </div>
+                        <div className="doc-meta-item">
+                          <FileText size={14} />
+                          <span>Année {doc.year}</span>
+                        </div>
+                      </div>
+                      <div className="doc-type-badge">
+                        <span className={`doc-type ${doc.docType.toLowerCase()}`}>
+                          {doc.docType}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="doc-card-footer">
+                      {doc.status === "valid" && doc.downloadUrl && (
+                        <a
+                          href={doc.downloadUrl}
+                          className="doc-action-btn download"
+                          download
+                        >
+                          <Download size={16} />
+                          <span>Télécharger</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
       </main>
+
       {/* Details Modal */}
       {showDetailsModal && activeDocument && (
-        <div className="mes-documents-modal-overlay">
-          <div className="mes-documents-details-modal">
-            <div className="mes-documents-details-header">
-              <h2>Détail du document</h2>
-              <button
-                className="mes-documents-details-close"
-                onClick={() => setShowDetailsModal(false)}
-              ><X size={24}/></button>
-            </div>
-            <div className="mes-documents-details-body">
-              <div className="mes-documents-details-row">
-                <span className="label">Titre :</span>
+        <div className="mes-documents-modal-backdrop">
+          <div className="mes-documents-modal">
+            <button
+              className="mes-documents-modal-close"
+              onClick={() => setShowDetailsModal(false)}
+            >
+              <X size={22} />
+            </button>
+            <h3 className="mes-documents-modal-title">
+              <FileText size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#5eead4"}} />
+              Détail du document
+            </h3>
+            <div className="mes-documents-modal-fields">
+              <div className="modal-field">
+                <strong>Titre :</strong>
                 <span>{activeDocument.title}</span>
               </div>
-              <div className="mes-documents-details-row">
-                <span className="label">Type :</span>
+              <div className="modal-field">
+                <strong>Type :</strong>
                 <span>{activeDocument.docType}</span>
               </div>
-              <div className="mes-documents-details-row">
-                <span className="label">Année :</span>
+              <div className="modal-field">
+                <strong>Année :</strong>
                 <span>{activeDocument.year}</span>
               </div>
-              <div className="mes-documents-details-row">
-                <span className="label">Date d'archivage :</span>
+              <div className="modal-field">
+                <strong>Date d'archivage :</strong>
                 <span>{activeDocument.uploadDate}</span>
               </div>
-              <div className="mes-documents-details-row">
-                <span className="label">Statut :</span>
-                <span className={`mes-documents-details-status ${activeDocument.status}`}>
+              <div className="modal-field">
+                <strong>Statut :</strong>
+                <span style={{
+                  padding: '0.3rem 0.8rem',
+                  borderRadius: '999px',
+                  background: `${getDocStatusColor(activeDocument.status)}1a`,
+                  color: getDocStatusColor(activeDocument.status),
+                  fontWeight: 600,
+                  display: 'inline-block'
+                }}>
                   {getDocStatusText(activeDocument.status)}
                 </span>
               </div>
             </div>
-            <div className="mes-documents-details-footer">
+            <div className="mes-documents-modal-footer">
               {activeDocument.downloadUrl && activeDocument.status === 'valid' && (
                 <a
                   href={activeDocument.downloadUrl}
-                  className="mes-documents-details-download-btn"
+                  className="mes-documents-download-btn"
                   download
                 >
-                  <Download size={20} /> Télécharger le document
+                  <Download size={18} /> Télécharger
                 </a>
               )}
-              <button className="mes-documents-details-close-btn" onClick={() => setShowDetailsModal(false)}>
+              <button 
+                className="mes-documents-close-btn" 
+                onClick={() => setShowDetailsModal(false)}
+              >
                 Fermer
               </button>
             </div>
