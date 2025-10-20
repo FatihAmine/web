@@ -154,7 +154,6 @@ const Login = () => {
               </div>
 
               <div className="login-form-group">
-                <label className="login-label">Mot de passe</label>
                 <div className="login-input-wrapper">
                   <Lock className="login-input-icon" />
                   <input
@@ -173,15 +172,6 @@ const Login = () => {
                   </button>
                 </div>
               </div>
-
-              <div className="login-form-options">
-                <label className="login-remember-me">
-                  <input type="checkbox" className="login-checkbox" />
-                  Se souvenir de moi
-                </label>
-                <button className="login-forgot-password">Mot de passe oublié?</button>
-              </div>
-
               <button onClick={handleSubmit} className="login-submit-btn">
                 Se connecter
               </button>

@@ -5,15 +5,12 @@ import AdminLogin from "./pages/admin/auth/AdminLogin"; // AdminAuth
 
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard"; // AdminHome
-import DemandesAdmin from "./pages/admin/DemandesAdmin"; // AdminRequests
 import GestionUtilisateursAdmin from "./pages/admin/GestionUtilisateursAdmin"; // AdminUsers
 import GestionDocumentsAdmin from "./pages/admin/GestionDocumentsAdmin"; // AdminDocuments
 import JournalisationAdmin from "./pages/admin/JournalisationAdmin"; // AdminLogs
 import NotificationsAdmin from "./pages/admin/NotificationsAdmin"; // AdminNotifications
-import ParamètresAdmin from "./pages/admin/ParamètresAdmin"; // AdminSettings
-import SécuritéAdmin from "./pages/admin/SécuritéAdmin"; // AdminSecurity
-import BaseDeDonnéesAdmin from "./pages/admin/BaseDeDonnéesAdmin"; // AdminDatabase
-import StatistiquesAdmin from "./pages/admin/StatistiquesAdmin"; // AdminStats
+
+
 // Etudiant
 import EtudiantHome from "./pages/user/etudiant/EtudiantHome"; // StudentDashboard
 import DemandesEtudiants from "./pages/user/etudiant/DemandesEtudiants"; // StudentRequests
@@ -46,15 +43,10 @@ function App() {
         {/* Admin  */}
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/AdminDashboard" element={<AdminDashboard />} />
-        <Route path="/admin/demandes" element={<DemandesAdmin />} />
         <Route path="/admin/gestion-utilisateurs" element={<GestionUtilisateursAdmin />} />
         <Route path="/admin/gestion-documents" element={<GestionDocumentsAdmin />} />
         <Route path="/admin/journalisation" element={<JournalisationAdmin />} />
         <Route path="/admin/notifications" element={<NotificationsAdmin />} />
-        <Route path="/admin/parametres" element={<ParamètresAdmin />} />
-        <Route path="/admin/securite" element={<SécuritéAdmin />} />
-        <Route path="/admin/base-de-donnees" element={<BaseDeDonnéesAdmin />} />
-        <Route path="/admin/statistiques" element={<StatistiquesAdmin />} />
         
         {/* Etudiant */}
         <Route path="/etudiant" element={<EtudiantHome />} />

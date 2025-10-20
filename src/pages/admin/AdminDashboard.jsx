@@ -1,480 +1,267 @@
 import React, { useState } from 'react';
-import { 
-  Home, 
-  FileText, 
-  Users,
-  Clock, 
-  Bell, 
-  Settings, 
-  LogOut, 
-  Menu, 
-  X,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  AlertCircle,
-  BarChart3,
-  Shield,
-  Database,
-  Activity,
-  UserPlus,
-  FilePlus,
-  TrendingUp,
-  Download,
-  Archive
-} from 'lucide-react';
+import Sidebar from '../component/sidebar';
+import { Bell, Users, FileText, Clock, TrendingUp, Activity, X, Menu } from 'lucide-react';
+import { AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import '../../css/admin/AdminDashboard.css';
 
+const userData = {
+  firstName: "Mohammed",
+  lastName: "Alaoui",
+  role: "Super Administrateur",
+  profilePic: "https://ui-avatars.com/api/?name=Mohammed+Alaoui&background=17766e&color=fff&size=200"
+};
+
+// Sample data for charts
+const lineChartData = [
+  { name: 'Jan', users: 400, documents: 240 },
+  { name: 'Fév', users: 300, documents: 139 },
+  { name: 'Mar', users: 200, documents: 980 },
+  { name: 'Avr', users: 278, documents: 390 },
+  { name: 'Mai', users: 189, documents: 480 },
+  { name: 'Jun', users: 239, documents: 380 },
+  { name: 'Jul', users: 349, documents: 430 },
+];
+
+const pieChartData = [
+  { name: 'Actif', value: 400, color: '#17766e' },
+  { name: 'En attente', value: 300, color: '#f59e0b' },
+  { name: 'Inactif', value: 200, color: '#ef4444' },
+  { name: 'Suspendu', value: 100, color: '#64748b' },
+];
+
+const barChartData = [
+  { name: 'Lun', requests: 45 },
+  { name: 'Mar', requests: 52 },
+  { name: 'Mer', requests: 38 },
+  { name: 'Jeu', requests: 63 },
+  { name: 'Ven', requests: 48 },
+  { name: 'Sam', requests: 25 },
+  { name: 'Dim', requests: 20 },
+];
+
+const recentActivities = [
+  { id: 1, user: 'Sarah Martin', action: 'Document téléchargé', time: 'Il y a 2 min', type: 'upload' },
+  { id: 2, user: 'John Doe', action: 'Inscription plateforme', time: 'Il y a 15 min', type: 'user' },
+  { id: 3, user: 'Emma Wilson', action: "Demande d'accès", time: 'Il y a 1h', type: 'request' },
+  { id: 4, user: 'Mike Johnson', action: 'Profil mis à jour', time: 'Il y a 2h', type: 'update' },
+  { id: 5, user: 'Alice Cooper', action: 'Nouveau document créé', time: 'Il y a 3h', type: 'upload' },
+];
+
 const AdminDashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  const userData = {
-    firstName: "Mohammed",
-    lastName: "Alaoui",
-    role: "Super Administrateur",
-    profilePic: "https://ui-avatars.com/api/?name=Mohammed+Alaoui&background=17766e&color=fff&size=200"
-  };
-
-  const stats = {
-    totalUsers: 1248,
-    totalDocuments: 5678,
-    pendingRequests: 45,
-    systemAlerts: 3,
-    activePersonnel: 24,
-    totalStudents: 890,
-    totalParents: 334,
-    documentsThisMonth: 456
-  };
-
-  const recentUsers = [
-    { id: 1, name: "Ahmed Bennani", role: "Étudiant", email: "ahmed.b@ynov.ma", status: "active", joinDate: "2025-10-10" },
-    { id: 2, name: "Fatima Idrissi", role: "Parent", email: "fatima.i@gmail.com", status: "active", joinDate: "2025-10-09" },
-    { id: 3, name: "Karim Tazi", role: "Personnel", email: "karim.t@ynov.ma", status: "active", joinDate: "2025-10-08" },
-    { id: 4, name: "Sara Fassi", role: "Étudiant", email: "sara.f@ynov.ma", status: "pending", joinDate: "2025-10-07" }
+  const stats = [
+    {
+      id: 1,
+      title: 'Total Utilisateurs',
+      value: '1,254',
+      change: '+12.5%',
+      icon: <Users size={24} />,
+      color: '#5eead4',
+    },
+    {
+      id: 2,
+      title: 'Documents',
+      value: '340',
+      change: '+8.2%',
+      icon: <FileText size={24} />,
+      color: '#3b82f6',
+    },
+    {
+      id: 3,
+      title: 'En attente',
+      value: '12',
+      change: '-2.4%',
+      icon: <Clock size={24} />,
+      color: '#f59e0b',
+    },
+    {
+      id: 4,
+      title: 'Croissance',
+      value: '+18%',
+      change: '+5.1%',
+      icon: <TrendingUp size={24} />,
+      color: '#10b981',
+    },
   ];
 
-  const systemLogs = [
-    { id: 1, action: "Création utilisateur", user: "Admin", details: "Nouvel étudiant: Ahmed Bennani", time: "Il y a 5 min", type: "success" },
-    { id: 2, action: "Modification document", user: "Personnel_01", details: "Bulletin modifié pour Sara Idrissi", time: "Il y a 15 min", type: "info" },
-    { id: 3, action: "Suppression demande", user: "Admin", details: "Demande #1234 supprimée", time: "Il y a 30 min", type: "warning" },
-    { id: 4, action: "Erreur système", user: "System", details: "Échec de génération PDF", time: "Il y a 1h", type: "error" },
-    { id: 5, action: "Export données", user: "Admin", details: "Export base de données complète", time: "Il y a 2h", type: "success" }
-  ];
-
-  const systemAlerts = [
-    { id: 1, title: "Espace disque faible", message: "L'espace de stockage est à 85%", severity: "warning", time: "Il y a 1h" },
-    { id: 2, title: "Sauvegarde échouée", message: "La sauvegarde automatique a échoué", severity: "error", time: "Il y a 3h" },
-    { id: 3, title: "Mise à jour disponible", message: "Nouvelle version système disponible", severity: "info", time: "Il y a 5h" }
-  ];
-
-  const documentStats = [
-    { type: "Attestations", count: 1234, percentage: 32, trend: "up" },
-    { type: "Bulletins", count: 987, percentage: 26, trend: "up" },
-    { type: "Certificats", count: 876, percentage: 23, trend: "down" },
-    { type: "Conventions", count: 721, percentage: 19, trend: "up" }
-  ];
-
-  const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Tableau de bord' },
-    { id: 'users', icon: Users, label: 'Gestion Utilisateurs' },
-    { id: 'documents', icon: FileText, label: 'Gestion Documents' },
-    { id: 'requests', icon: Clock, label: 'Demandes' },
-    { id: 'statistics', icon: BarChart3, label: 'Statistiques' },
-    { id: 'logs', icon: Activity, label: 'Journalisation' },
-    { id: 'security', icon: Shield, label: 'Sécurité' },
-    { id: 'database', icon: Database, label: 'Base de données' },
-    { id: 'notifications', icon: Bell, label: 'Notifications' },
-    { id: 'settings', icon: Settings, label: 'Paramètres' }
-  ];
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'active': return '#10b981';
-      case 'pending': return '#f59e0b';
-      case 'inactive': return '#ef4444';
-      default: return '#6b7280';
-    }
-  };
-
-  const getLogTypeColor = (type) => {
-    switch(type) {
-      case 'success': return '#10b981';
-      case 'error': return '#ef4444';
-      case 'warning': return '#f59e0b';
-      case 'info': return '#3b82f6';
-      default: return '#6b7280';
-    }
-  };
-
-  const getAlertColor = (severity) => {
-    switch(severity) {
-      case 'error': return '#ef4444';
-      case 'warning': return '#f59e0b';
-      case 'info': return '#3b82f6';
-      default: return '#6b7280';
-    }
+  const handleLogout = () => {
+    console.log('Logout clicked');
   };
 
   return (
     <div className="admin-dashboard-container">
-      {/* Sidebar */}
-      <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : 'admin-sidebar-closed'}`}>
-        <div className="admin-sidebar-content">
-          <div className="admin-profile-section">
-            <img src={userData.profilePic} alt="Profile" className="admin-profile-pic" />
-            {sidebarOpen && (
-              <div className="admin-profile-info">
-                <h3 className="admin-profile-name">{userData.firstName} {userData.lastName}</h3>
-                <p className="admin-profile-role">{userData.role}</p>
-              </div>
-            )}
-          </div>
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={handleLogout}
+        userData={userData}
+      />
 
-          <nav className="admin-menu">
-            {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`admin-menu-item ${activeTab === item.id ? 'admin-menu-item-active' : ''}`}
-                title={!sidebarOpen ? item.label : ''}
-              >
-                <item.icon size={20} />
-                {sidebarOpen && <span>{item.label}</span>}
-              </button>
-            ))}
-          </nav>
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-          <button className="admin-disconnect-btn">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Déconnexion</span>}
-          </button>
-        </div>
-      </aside>
-
-      <main className="admin-main-content">
+      <main className={`admin-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+        {/* Header */}
         <header className="admin-header">
-          <button 
-            className="admin-toggle-sidebar-btn"
+          <button
+            className="admin-toggle-sidebar-btn mobile-menu-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Ouvrir/Fermer Menu"
           >
-            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h1 className="admin-page-title">
-            {menuItems.find(item => item.id === activeTab)?.label}
-          </h1>
+          <h1 className="admin-page-title">Tableau de bord</h1>
           <div className="admin-header-actions">
-            <button className="admin-search-btn">
-              <Search size={20} />
-            </button>
-            <button className="admin-notification-btn">
+            <button className="admin-search-btn" aria-label="Notifications">
               <Bell size={20} />
-              <span className="admin-notification-badge">{stats.systemAlerts}</span>
+              <span className="notification-badge"></span>
             </button>
           </div>
         </header>
 
+        {/* Content */}
         <div className="admin-content">
-          {/* Main Stats Grid */}
+          {/* Stats Cards */}
           <div className="admin-stats-grid">
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon" style={{background: 'linear-gradient(135deg, #17766e, #14635c)'}}>
-                <Users size={28} />
+            {stats.map((stat) => (
+              <div key={stat.id} className="admin-stat-card" style={{'--stat-color': stat.color}}>
+                <div className="stat-icon" style={{background: `${stat.color}1a`, color: stat.color}}>
+                  {stat.icon}
+                </div>
+                <div className="stat-content">
+                  <p className="stat-label">{stat.title}</p>
+                  <h3 className="stat-value">{stat.value}</h3>
+                  <div className="stat-change" style={{color: stat.change.startsWith('+') ? '#10b981' : '#ef4444'}}>
+                    {stat.change}
+                  </div>
+                </div>
               </div>
-              <div className="admin-stat-info">
-                <p className="admin-stat-label">Total Utilisateurs</p>
-                <h2 className="admin-stat-value">{stats.totalUsers}</h2>
-                <p className="admin-stat-trend admin-stat-trend-up">
-                  <TrendingUp size={14} />
-                  <span>+12% ce mois</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon" style={{background: 'linear-gradient(135deg, #3b82f6, #2563eb)'}}>
-                <FileText size={28} />
-              </div>
-              <div className="admin-stat-info">
-                <p className="admin-stat-label">Total Documents</p>
-                <h2 className="admin-stat-value">{stats.totalDocuments}</h2>
-                <p className="admin-stat-trend admin-stat-trend-up">
-                  <TrendingUp size={14} />
-                  <span>+8% ce mois</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon" style={{background: 'linear-gradient(135deg, #f59e0b, #d97706)'}}>
-                <Clock size={28} />
-              </div>
-              <div className="admin-stat-info">
-                <p className="admin-stat-label">Demandes en attente</p>
-                <h2 className="admin-stat-value">{stats.pendingRequests}</h2>
-                <p className="admin-stat-trend admin-stat-trend-neutral">
-                  <span>-5 depuis hier</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon" style={{background: 'linear-gradient(135deg, #ef4444, #dc2626)'}}>
-                <AlertCircle size={28} />
-              </div>
-              <div className="admin-stat-info">
-                <p className="admin-stat-label">Alertes Système</p>
-                <h2 className="admin-stat-value">{stats.systemAlerts}</h2>
-                <p className="admin-stat-trend admin-stat-trend-down">
-                  <span>Nécessite attention</span>
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Secondary Stats */}
-          <div className="admin-secondary-stats">
-            <div className="admin-secondary-stat">
-              <div className="admin-secondary-stat-icon">
-                <Users size={20} />
+          {/* Charts Section */}
+          <div className="admin-charts-grid">
+            {/* Area Chart */}
+            <div className="admin-chart-card">
+              <div className="chart-header">
+                <h2 className="chart-title">Aperçu de la croissance</h2>
+                <select className="chart-filter">
+                  <option>7 derniers jours</option>
+                  <option>30 derniers jours</option>
+                  <option>12 derniers mois</option>
+                </select>
               </div>
-              <div className="admin-secondary-stat-info">
-                <p className="admin-secondary-stat-label">Étudiants</p>
-                <p className="admin-secondary-stat-value">{stats.totalStudents}</p>
-              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={lineChartData}>
+                  <defs>
+                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#17766e" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#17766e" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorDocs" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" />
+                  <Tooltip 
+                    contentStyle={{backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px'}}
+                    labelStyle={{color: '#fff'}}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="users" stroke="#17766e" fillOpacity={1} fill="url(#colorUsers)" strokeWidth={3} name="Utilisateurs" />
+                  <Area type="monotone" dataKey="documents" stroke="#3b82f6" fillOpacity={1} fill="url(#colorDocs)" strokeWidth={3} name="Documents" />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-            <div className="admin-secondary-stat">
-              <div className="admin-secondary-stat-icon">
-                <Users size={20} />
-              </div>
-              <div className="admin-secondary-stat-info">
-                <p className="admin-secondary-stat-label">Parents</p>
-                <p className="admin-secondary-stat-value">{stats.totalParents}</p>
-              </div>
-            </div>
-            <div className="admin-secondary-stat">
-              <div className="admin-secondary-stat-icon">
-                <Shield size={20} />
-              </div>
-              <div className="admin-secondary-stat-info">
-                <p className="admin-secondary-stat-label">Personnel</p>
-                <p className="admin-secondary-stat-value">{stats.activePersonnel}</p>
-              </div>
-            </div>
-            <div className="admin-secondary-stat">
-              <div className="admin-secondary-stat-icon">
-                <FileText size={20} />
-              </div>
-              <div className="admin-secondary-stat-info">
-                <p className="admin-secondary-stat-label">Docs ce mois</p>
-                <p className="admin-secondary-stat-value">{stats.documentsThisMonth}</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Main Content Grid */}
-          <div className="admin-main-grid">
-            {/* Recent Users */}
-            <div className="admin-card admin-card-users">
-              <div className="admin-card-header">
-                <h3 className="admin-card-title">Utilisateurs récents</h3>
-                <button className="admin-add-btn">
-                  <UserPlus size={18} />
-                  Ajouter
-                </button>
-              </div>
-              <div className="admin-table-container">
-                <table className="admin-table">
-                  <thead className="admin-table-head">
-                    <tr>
-                      <th className="admin-table-th">Nom</th>
-                      <th className="admin-table-th">Rôle</th>
-                      <th className="admin-table-th">Email</th>
-                      <th className="admin-table-th">Date</th>
-                      <th className="admin-table-th">Statut</th>
-                      <th className="admin-table-th">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="admin-table-body">
-                    {recentUsers.map(user => (
-                      <tr key={user.id} className="admin-table-row">
-                        <td className="admin-table-td">
-                          <div className="admin-user-cell">
-                            <div className="admin-user-avatar">
-                              {user.name.charAt(0)}
-                            </div>
-                            <span>{user.name}</span>
-                          </div>
-                        </td>
-                        <td className="admin-table-td">
-                          <span className="admin-role-badge">{user.role}</span>
-                        </td>
-                        <td className="admin-table-td admin-email-cell">{user.email}</td>
-                        <td className="admin-table-td admin-date-cell">{user.joinDate}</td>
-                        <td className="admin-table-td">
-                          <span className="admin-status-dot" style={{
-                            background: getStatusColor(user.status)
-                          }}>
-                            <span className="admin-status-text">{user.status === 'active' ? 'Actif' : 'En attente'}</span>
-                          </span>
-                        </td>
-                        <td className="admin-table-td">
-                          <div className="admin-action-buttons">
-                            <button className="admin-action-btn admin-view-btn" title="Voir">
-                              <Eye size={16} />
-                            </button>
-                            <button className="admin-action-btn admin-edit-btn" title="Modifier">
-                              <Edit size={16} />
-                            </button>
-                            <button className="admin-action-btn admin-delete-btn" title="Supprimer">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+            {/* Pie Chart */}
+            <div className="admin-chart-card">
+              <h2 className="chart-title">Statut des utilisateurs</h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={pieChartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* System Logs */}
-            <div className="admin-card">
-              <div className="admin-card-header">
-                <h3 className="admin-card-title">Journalisation Système</h3>
-                <button className="admin-filter-btn-small">
-                  <Filter size={16} />
-                  Filtrer
-                </button>
-              </div>
-              <div className="admin-logs-list">
-                {systemLogs.map(log => (
-                  <div key={log.id} className="admin-log-item">
-                    <div className="admin-log-icon" style={{
-                      background: `${getLogTypeColor(log.type)}20`,
-                      color: getLogTypeColor(log.type)
-                    }}>
-                      <Activity size={16} />
-                    </div>
-                    <div className="admin-log-content">
-                      <h4 className="admin-log-action">{log.action}</h4>
-                      <p className="admin-log-details">{log.details}</p>
-                      <p className="admin-log-meta">{log.user} • {log.time}</p>
-                    </div>
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px'}}
+                    labelStyle={{color: '#fff'}}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pie-legend">
+                {pieChartData.map((entry, index) => (
+                  <div key={index} className="legend-item">
+                    <span className="legend-color" style={{backgroundColor: entry.color}}></span>
+                    <span className="legend-text">{entry.name}</span>
+                    <span className="legend-value">{entry.value}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Alerts & Document Stats */}
+          {/* Bar Chart and Activity */}
           <div className="admin-bottom-grid">
-            {/* System Alerts */}
-            <div className="admin-card">
-              <div className="admin-card-header">
-                <h3 className="admin-card-title">Alertes Système</h3>
-                <span className="admin-alert-count">{systemAlerts.length}</span>
-              </div>
-              <div className="admin-alerts-list">
-                {systemAlerts.map(alert => (
-                  <div key={alert.id} className="admin-alert-item">
-                    <div className="admin-alert-indicator" style={{
-                      background: getAlertColor(alert.severity)
-                    }}></div>
-                    <div className="admin-alert-content">
-                      <h4 className="admin-alert-title">{alert.title}</h4>
-                      <p className="admin-alert-message">{alert.message}</p>
-                      <p className="admin-alert-time">{alert.time}</p>
+            {/* Bar Chart */}
+            <div className="admin-chart-card">
+              <h2 className="chart-title">Demandes hebdomadaires</h2>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={barChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" />
+                  <Tooltip 
+                    contentStyle={{backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px'}}
+                    labelStyle={{color: '#fff'}}
+                  />
+                  <Bar dataKey="requests" fill="#17766e" radius={[8, 8, 0, 0]} name="Demandes" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="admin-chart-card">
+              <h2 className="chart-title">Activité récente</h2>
+              <div className="activity-list">
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="activity-item">
+                    <div className="activity-icon">
+                      <Activity size={20} />
                     </div>
-                    <button className="admin-alert-dismiss">✕</button>
+                    <div className="activity-details">
+                      <p className="activity-user">{activity.user}</p>
+                      <p className="activity-action">{activity.action}</p>
+                    </div>
+                    <span className="activity-time">{activity.time}</span>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Document Statistics */}
-            <div className="admin-card">
-              <div className="admin-card-header">
-                <h3 className="admin-card-title">Répartition des Documents</h3>
-              </div>
-              <div className="admin-doc-stats-list">
-                {documentStats.map((doc, index) => (
-                  <div key={index} className="admin-doc-stat-item">
-                    <div className="admin-doc-stat-header">
-                      <span className="admin-doc-stat-type">{doc.type}</span>
-                      <span className="admin-doc-stat-count">{doc.count}</span>
-                    </div>
-                    <div className="admin-doc-stat-bar">
-                      <div 
-                        className="admin-doc-stat-fill"
-                        style={{width: `${doc.percentage}%`}}
-                      ></div>
-                    </div>
-                    <div className="admin-doc-stat-footer">
-                      <span className="admin-doc-stat-percentage">{doc.percentage}%</span>
-                      <span className={`admin-doc-stat-trend ${doc.trend === 'up' ? 'admin-doc-trend-up' : 'admin-doc-trend-down'}`}>
-                        {doc.trend === 'up' ? '↑' : '↓'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="admin-quick-actions-section">
-            <h3 className="admin-section-title">Actions Rapides</h3>
-            <div className="admin-actions-grid">
-              <button className="admin-quick-action-card">
-                <div className="admin-quick-action-icon" style={{background: 'linear-gradient(135deg, #17766e, #14635c)'}}>
-                  <UserPlus size={28} />
-                </div>
-                <h4 className="admin-quick-action-title">Nouvel utilisateur</h4>
-                <p className="admin-quick-action-desc">Créer un compte utilisateur</p>
-              </button>
-
-              <button className="admin-quick-action-card">
-                <div className="admin-quick-action-icon" style={{background: 'linear-gradient(135deg, #3b82f6, #2563eb)'}}>
-                  <FilePlus size={28} />
-                </div>
-                <h4 className="admin-quick-action-title">Générer document</h4>
-                <p className="admin-quick-action-desc">Créer un nouveau document</p>
-              </button>
-
-              <button className="admin-quick-action-card">
-                <div className="admin-quick-action-icon" style={{background: 'linear-gradient(135deg, #10b981, #059669)'}}>
-                  <Download size={28} />
-                </div>
-                <h4 className="admin-quick-action-title">Export données</h4>
-                <p className="admin-quick-action-desc">Exporter la base de données</p>
-              </button>
-
-              <button className="admin-quick-action-card">
-                <div className="admin-quick-action-icon" style={{background: 'linear-gradient(135deg, #f59e0b, #d97706)'}}>
-                  <Archive size={28} />
-                </div>
-                <h4 className="admin-quick-action-title">Archivage</h4>
-                <p className="admin-quick-action-desc">Archiver les documents</p>
-              </button>
-
-              <button className="admin-quick-action-card">
-                <div className="admin-quick-action-icon" style={{background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'}}>
-                  <BarChart3 size={28} />
-                </div>
-                <h4 className="admin-quick-action-title">Rapports</h4>
-                <p className="admin-quick-action-desc">Générer des rapports</p>
-              </button>
-
-              <button className="admin-quick-action-card">
-                <div className="admin-quick-action-icon" style={{background: 'linear-gradient(135deg, #ef4444, #dc2626)'}}>
-                  <Database size={28} />
-                </div>
-                <h4 className="admin-quick-action-title">Sauvegarde</h4>
-                <p className="admin-quick-action-desc">Sauvegarder le système</p>
-              </button>
             </div>
           </div>
         </div>
