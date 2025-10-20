@@ -1,19 +1,24 @@
+
+
+
+
+
+
 import React, { useEffect } from 'react';
 import {
   Home,
   Users,
   FileText,
   LogOut,
-  X,
-  Bell,
+  Bell, 
   Activity,
-  Menu,
+  Settings,
   Clock,
-  Settings
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './sidebar.css';
-
 
 const menuItems = [
   { id: 'dashboard', icon: Home, label: 'Tableau de bord', path: '/personnel' },
@@ -33,21 +38,18 @@ const Sidebar = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Initialize sidebar state from localStorage on first mount
   useEffect(() => {
     const savedState = localStorage.getItem('sidebarOpen');
     if (savedState !== null) {
       const isOpen = JSON.parse(savedState);
       setSidebarOpen(isOpen);
     }
-  }, []); // Run only once on mount
+  }, []);
 
-  // Save to localStorage whenever sidebar state changes
   useEffect(() => {
     localStorage.setItem('sidebarOpen', JSON.stringify(sidebarOpen));
   }, [sidebarOpen]);
 
-  // Set active tab based on current route
   useEffect(() => {
     const currentPath = location.pathname;
     const currentItem = menuItems.find(item => item.path === currentPath);
@@ -60,11 +62,9 @@ const Sidebar = ({
     setActiveTab(item.id);
     navigate(item.path);
     
-    // Only close sidebar on mobile after navigation
     if (window.innerWidth <= 768) {
       setSidebarOpen(false);
     }
-    // Don't change sidebar state on desktop
   };
 
   const handleToggle = () => {
@@ -74,33 +74,28 @@ const Sidebar = ({
   };
 
   const handleLogout = () => {
-    // Clear any stored auth tokens or user data
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
-    // You can also clear sidebar state if needed
-    // localStorage.removeItem('sidebarOpen');
     
-    // Call the parent onLogout function if provided
     if (onLogout) {
       onLogout();
     }
     
-    // Navigate to admin login page
-    navigate('/');
+    navigate('/admin');
   };
 
   return (
     <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : 'admin-sidebar-closed'}`}>
-      <div className="admin-sidebar-content">
-        {/* Toggle button inside sidebar */}
-        <button
-          className="admin-toggle-sidebar-inside-btn"
-          onClick={handleToggle}
-          aria-label={sidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
-        >
-          {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+      {/* Half-circle toggle button on right edge */}
+      <button
+        className="admin-toggle-tab-btn"
+        onClick={handleToggle}
+        aria-label={sidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
+      >
+        {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+      </button>
 
+      <div className="admin-sidebar-content">
         <div className="admin-profile-section">
           <img src={userData.profilePic} alt="Profile" className="admin-profile-pic" />
           {sidebarOpen && (
