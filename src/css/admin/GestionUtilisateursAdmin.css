@@ -41,13 +41,11 @@
 .admin-users-main-content.sidebar-closed { margin-left: 68px; }
 
 /* Small laptop optimization (1024px to 1280px) */
-@media (max-width: 1280px) and (min-width: 1025px) {
-  .admin-users-main-content.sidebar-open { margin-left: 200px; }
-}
 @media (max-width: 1024px) {
   .admin-users-main-content.sidebar-open { margin-left: 180px; }
   .admin-users-main-content.sidebar-closed { margin-left: 56px; }
 }
+
 @media (max-width: 768px) {
   .admin-users-main-content.sidebar-open,
   .admin-users-main-content.sidebar-closed { margin-left: 0; }
