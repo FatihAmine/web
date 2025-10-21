@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/auth/Login"; // Login
 import AdminLogin from "./pages/admin/auth/AdminLogin"; // AdminAuth
-
+import Newuser from "./pages/auth/NewUser"; // NewUser
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard"; // AdminHome
 import GestionUtilisateursAdmin from "./pages/admin/GestionUtilisateursAdmin"; // AdminUsers
@@ -37,6 +37,7 @@ function App() {
       <Routes>
         {/* Start at Login */}
         <Route path="/" element={<Login />} />
+        <Route path="/new-user" element={<Newuser />} />
         {/* Admin  */}
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/AdminDashboard" element={<AdminDashboard />} />
