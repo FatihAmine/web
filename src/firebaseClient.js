@@ -1,14 +1,30 @@
 // src/firebaseClient.js
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import {
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+  isSupported
+} from 'firebase/messaging';
 import { FIREBASE_CONFIG, VAPID_PUBLIC_KEY } from './config/appConfig';
 
 export const app = initializeApp(FIREBASE_CONFIG);
 export const auth = getAuth(app);
-export { signInWithEmailAndPassword, signOut };
 
-// Enregistre le SW FCM et retourne un token (ou null)
+// 🔐 Persistance locale -> l’utilisateur reste connecté après F5
+setPersistence(auth, browserLocalPersistence);
+
+export { onAuthStateChanged, signInWithEmailAndPassword, signOut };
+
+// --- FCM utils ---
 export async function setupFCM() {
   const supported = await isSupported();
   if (!supported) return { supported: false, token: null };
@@ -16,7 +32,7 @@ export async function setupFCM() {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') return { supported: true, token: null };
 
-  // Enregistrer explicitement le SW
+  // Enregistrer explicitement le SW (public/firebase-messaging-sw.js)
   const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
 
   const messaging = getMessaging(app);

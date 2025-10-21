@@ -1,13 +1,19 @@
+// src/pages/admin/auth/AdminLogin.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import '../../../css/Login.css';
 import logo from '../../../assets/Logo/Logo.png';
 
-import { auth, signInWithEmailAndPassword, setupFCM, onForegroundMessage } from '../../../firebaseClient';
+import {
+  auth,
+  signInWithEmailAndPassword,
+  setupFCM,
+  onForegroundMessage
+} from '../../../firebaseClient';
 import api from '../../../api';
 
-const Login = () => {
+const AdminLogin = () => {
   const canvasRef = useRef(null);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -16,121 +22,70 @@ const Login = () => {
   const [errMsg, setErrMsg] = useState(null);
   const navigate = useNavigate();
 
-  // (Optionnel) écouter les notifications quand l'app est au premier plan
+  // (optionnel) écouter les notifications quand l'app est au premier plan
   useEffect(() => {
     onForegroundMessage((payload) => {
       console.log('[FCM] Foreground message:', payload);
     });
   }, []);
 
-  // ==== Ton animation canvas inchangée ====
+  // ===== Animation canvas (inchangée, compacte) =====
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    let animationId;
-    let time = 0;
+    let animationId, time = 0;
 
-    const setCanvasSize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-
-    setCanvasSize();
-    window.addEventListener('resize', setCanvasSize);
+    const setSize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    setSize(); window.addEventListener('resize', setSize);
 
     class Particle {
-      constructor() { this.reset(); }
-      reset() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.z = Math.random() * 1500;
-        this.size = Math.random() * 2 + 1;
-      }
-      update() {
-        this.z -= 3;
-        if (this.z <= 0) { this.reset(); this.z = 1500; }
-      }
-      draw() {
-        const x = (this.x - canvas.width / 2) * (1000 / this.z) + canvas.width / 2;
-        const y = (this.y - canvas.height / 2) * (1000 / this.z) + canvas.height / 2;
-        const size = (1 - this.z / 1500) * this.size * 3;
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        const opacity = 1 - this.z / 1500;
-        ctx.fillStyle = `rgba(23, 118, 110, ${opacity * 0.8})`;
-        ctx.fill();
+      constructor(){ this.reset(); }
+      reset(){ this.x=Math.random()*canvas.width; this.y=Math.random()*canvas.height; this.z=Math.random()*1500; this.size=Math.random()*2+1; }
+      update(){ this.z -= 3; if(this.z<=0){ this.reset(); this.z=1500; } }
+      draw(){
+        const x=(this.x-canvas.width/2)*(1000/this.z)+canvas.width/2;
+        const y=(this.y-canvas.height/2)*(1000/this.z)+canvas.height/2;
+        const size=(1-this.z/1500)*this.size*3;
+        ctx.beginPath(); ctx.arc(x,y,size,0,Math.PI*2);
+        const opacity=1-this.z/1500; ctx.fillStyle=`rgba(23,118,110,${opacity*0.8})`; ctx.fill();
       }
     }
-
-    const particles = Array.from({ length: 150 }, () => new Particle());
-
-    const drawWave = (offset, color, alpha) => {
-      ctx.beginPath();
-      ctx.moveTo(0, canvas.height / 2);
-      for (let x = 0; x < canvas.width; x += 5) {
-        const y = canvas.height / 2 + Math.sin((x + offset) * 0.01) * 50 + Math.sin((x + offset) * 0.02) * 30;
-        ctx.lineTo(x, y);
-      }
-      ctx.strokeStyle = `rgba(${color}, ${alpha})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    };
-
-    const animate = () => {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.1)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const gradient = ctx.createRadialGradient(
-        canvas.width / 2, canvas.height / 2, 0,
-        canvas.width / 2, canvas.height / 2, canvas.width / 2
-      );
-      gradient.addColorStop(0, 'rgba(23, 118, 110, 0.05)');
-      gradient.addColorStop(1, 'rgba(15, 23, 42, 0.3)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      drawWave(time * 2, '23, 118, 110', 0.3);
-      drawWave(time * 3 + 100, '20, 100, 95', 0.2);
-      drawWave(time * 1.5 + 200, '17, 85, 80', 0.15);
-
-      particles.forEach((p) => { p.update(); p.draw(); });
-      time += 1;
-      animationId = requestAnimationFrame(animate);
-    };
-
+    const particles=Array.from({length:150},()=>new Particle());
+    const wave=(o,c,a)=>{ctx.beginPath();ctx.moveTo(0,canvas.height/2);for(let x=0;x<canvas.width;x+=5){const y=canvas.height/2+Math.sin((x+o)*0.01)*50+Math.sin((x+o)*0.02)*30;ctx.lineTo(x,y)}ctx.strokeStyle=`rgba(${c},${a})`;ctx.lineWidth=2;ctx.stroke()};
+    const animate=()=>{ctx.fillStyle='rgba(15,23,42,0.1)';ctx.fillRect(0,0,canvas.width,canvas.height);const g=ctx.createRadialGradient(canvas.width/2,canvas.height/2,0,canvas.width/2,canvas.height/2,canvas.width/2);g.addColorStop(0,'rgba(23,118,110,0.05)');g.addColorStop(1,'rgba(15,23,42,0.3)');ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);wave(time*2,'23,118,110',0.3);wave(time*3+100,'20,100,95',0.2);wave(time*1.5+200,'17,85,80',0.15);particles.forEach(p=>{p.update();p.draw();});time+=1;animationId=requestAnimationFrame(animate)};
     animate();
-    return () => { window.removeEventListener('resize', setCanvasSize); cancelAnimationFrame(animationId); };
+    return ()=>{ window.removeEventListener('resize', setSize); cancelAnimationFrame(animationId); };
   }, []);
 
-  // ==== LOGIN sécurisé: Firebase -> /me -> FCM -> check admin -> navigate ====
+  // ===== LOGIN: Firebase -> /me -> check admin -> FCM -> navigate =====
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrMsg(null);
     setLoading(true);
 
     try {
-      // 1) Connexion Firebase
+      // 1) Auth Firebase
       await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      // 2) Ping backend /me (met à jour users/{uid}, log 'LOGIN')
+      // 2) Confirme côté backend + met à jour lastLoginAt
       const { data: me } = await api.get('/me');
 
-      // 3) Vérifie rôle admin
+      // 3) Autorisation admin
       if (me.role !== 'admin') {
         setErrMsg("Accès réservé à l'administration.");
         setLoading(false);
         return;
       }
 
-      // 4) FCM (première connexion) : permission + envoi du token
+      // 4) FCM (optionnel)
       const { supported, token } = await setupFCM();
       if (supported && token) {
-        await api.post('/me/fcm', { token }); // stocké côté back (arrayUnion)
+        await api.post('/me/fcm', { token });
       }
 
-      // 5) Redirection
+      // 5) Redirection vers ton dashboard (garde ton chemin)
       setLoading(false);
-      navigate("/AdminDashboard");
+      navigate('/AdminDashboard', { replace: true });
     } catch (err) {
       console.error(err);
       setErrMsg("Email ou mot de passe invalide.");
@@ -204,4 +159,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default AdminLogin;

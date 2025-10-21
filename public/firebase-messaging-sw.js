@@ -15,7 +15,7 @@ messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || 'Notification';
   const options = {
     body: payload.notification?.body || '',
-    icon: '/icon.png'
+    icon: '/icon.png' // ⚠️ assure-toi que ce fichier existe dans /public
   };
   self.registration.showNotification(title, options);
 });
