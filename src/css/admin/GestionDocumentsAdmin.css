@@ -252,3 +252,26 @@
     text-align: left;
   }
 }
+/* Default: desktop open/closed sidebar spacing */
+.personnel-main-content.sidebar-open { margin-left: 240px; }
+.personnel-main-content.sidebar-closed { margin-left: 68px; }
+
+/* Small laptop: more compact sidebar/margin */
+@media (max-width: 1366px) and (min-width: 1025px) {
+  .personnel-main-content.sidebar-open { margin-left: 240px !important; }
+  .personnel-main-content.sidebar-closed { margin-left: 56px !important; }
+}
+
+/* Tablet/laptop: follow same values */
+@media (max-width: 1024px) {
+  .personnel-main-content.sidebar-open { margin-left: 180px; }
+  .personnel-main-content.sidebar-closed { margin-left: 56px; }
+}
+
+/* Mobile: overlay sidebar, content is full width */
+@media (max-width: 768px) {
+  .personnel-main-content.sidebar-open,
+  .personnel-main-content.sidebar-closed {
+    margin-left: 0 !important;
+  }
+}
