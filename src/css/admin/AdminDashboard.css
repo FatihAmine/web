@@ -10,7 +10,18 @@
   background: #0f172a;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
+.admin-main-content.sidebar-open { margin-left: 240px; }
+@media (max-width: 1024px) {
+  .admin-main-content.sidebar-open { margin-left: 180px; }
+}
+@media (max-width: 768px) {
+  .admin-main-content.sidebar-open { margin-left: 0 !important; }
+}
 
+@media (max-width: 1024px) {
+  .admin-users-main-content.sidebar-open { margin-left: 180px; }
+  .admin-users-main-content.sidebar-closed { margin-left: 56px; }
+}
 .admin-main-content {
   flex: 1;
   background: #0f172a;
@@ -28,10 +39,12 @@
 
 /* Small laptop optimization */
 @media (max-width: 1366px) and (min-width: 1025px) {
-  .admin-main-content.sidebar-open {
-    margin-left: 68px;
-  }
+  .admin-main-content.sidebar-open { margin-left: 180px !important; }
+  .admin-main-content.sidebar-closed { margin-left: 56px !important; }
+  .admin-sidebar-open { width: 180px !important; }
+  .admin-sidebar-closed { width: 56px !important; }
 }
+
 
 @media (max-width: 1024px) {
   .admin-main-content.sidebar-open {
