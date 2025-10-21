@@ -15,6 +15,10 @@
 .admin-logs-sidebar-overlay {
   display: none;
 }
+@media (max-width: 1024px) {
+  .admin-users-main-content.sidebar-open { margin-left: 180px; }
+  .admin-users-main-content.sidebar-closed { margin-left: 56px; }
+}
 @media (max-width: 768px) {
   .admin-logs-sidebar-overlay {
     display: block;
