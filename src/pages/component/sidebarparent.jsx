@@ -1,4 +1,4 @@
-// src/components/parent/Sidebar.jsx  (ou remplace ton fichier existant)
+// src/components/parent/Sidebar.jsx
 import React, { useEffect, useState } from 'react';
 import {
   Home,
@@ -6,7 +6,6 @@ import {
   FileText,
   LogOut,
   Bell,
-  Settings,
   Clock,
   ChevronLeft,
   ChevronRight
@@ -14,16 +13,15 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import './sidebar.css';
 
-import api from '../../api';                // <-- adapte le chemin si besoin
-import { signOut } from '../../firebaseClient'; // <-- adapte le chemin si besoin
+import api from '../../api';                 
+import { signOut } from '../../firebaseClient'; 
 
 const menuItems = [
-  { id: 'dashboard',   icon: Home,   label: 'Tableau de bord', path: '/parent' },
-  { id: 'children',    icon: Users,  label: 'Mes Enfants',     path: '/parent/children' },
-  { id: 'documents',   icon: FileText, label: 'Documents',     path: '/parent/documents' },
-  { id: 'requests',    icon: Clock,  label: 'Demandes',        path: '/parent/demandes' },
-  { id: 'notifications', icon: Bell, label: 'Notifications',   path: '/parent/notifications' },
-  { id: 'settings',    icon: Settings, label: 'Paramètres',    path: '/parent/settings' }
+  { id: 'dashboard',     icon: Home,   label: 'Tableau de bord', path: '/parent' },
+  { id: 'children',      icon: Users,  label: 'Mes Enfants',     path: '/parent/children' },
+  { id: 'documents',     icon: FileText, label: 'Documents',     path: '/parent/documents' },
+  { id: 'requests',      icon: Clock,  label: 'Demandes',        path: '/parent/demandes' },
+  { id: 'notifications', icon: Bell,   label: 'Notifications',   path: '/parent/notifications' },
 ];
 
 const Sidebar = ({
@@ -45,10 +43,10 @@ const Sidebar = ({
     let mounted = true;
     (async () => {
       try {
-        const { data } = await api.get('/me'); // { prenom, nom, role, photoURL, ... }
+        const { data } = await api.get('/me');
         if (mounted) setMe(data);
       } catch (e) {
-        if (mounted) setMe(null); // 401 => ton interceptor peut rediriger vers /login
+        if (mounted) setMe(null);
       } finally {
         if (mounted) setLoadingMe(false);
       }
@@ -88,11 +86,9 @@ const Sidebar = ({
     localStorage.setItem('sidebarOpen', JSON.stringify(newState));
   };
 
-  // Logout sans désinscrire le token FCM
   const handleLogout = async () => {
     try { await signOut(); } catch (_) {}
     if (onLogout) onLogout();
-    // nettoyages locaux éventuels
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
     navigate('/login');
@@ -101,9 +97,21 @@ const Sidebar = ({
   // -- affichage depuis "me" --
   const firstName = (me?.prenom || '').trim();
   const lastName  = (me?.nom || '').trim();
-  const fullName  = loadingMe ? '…' : (firstName || lastName ? `${firstName}${lastName ? ` ${lastName}` : ''}` : (me?.displayName || me?.email?.split('@')[0] || ''));
-  const role      = loadingMe ? '' : (me?.role || '');
-  const photoURL  = (me?.photoURL && me.photoURL.trim()) ? me.photoURL : '/avatar.png';
+
+  // Initials fallback logic!
+  let avatarText = '';
+  if (firstName || lastName) {
+    avatarText = `${firstName ? firstName[0] : ''}${lastName ? lastName[0] : ''}`.toUpperCase();
+  } else if (me?.displayName) {
+    avatarText = me.displayName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  } else if (me?.email) {
+    avatarText = me.email[0].toUpperCase();
+  } else {
+    avatarText = 'U';
+  }
+
+  const fullName = loadingMe ? '…' : (firstName || lastName ? `${firstName}${lastName ? ` ${lastName}` : ''}` : (me?.displayName || me?.email?.split('@')[0] || ''));
+  const role     = loadingMe ? '' : (me?.role || '');
 
   return (
     <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : 'admin-sidebar-closed'}`}>
@@ -118,8 +126,23 @@ const Sidebar = ({
 
       <div className="admin-sidebar-content">
         <div className="admin-profile-section">
-          {/* Image de profil: on garde exactement ton balisage */}
-          <img src={photoURL} alt="Profile" className="admin-profile-pic" />
+          {/* Initials Avatar with same CSS as image avatar */}
+          <div
+            className="admin-profile-pic"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.45rem',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              background: 'linear-gradient(135deg, #17766e 0%, #5eead4 100%)',
+              color: '#fff',
+              userSelect: 'none'
+            }}
+          >
+            {avatarText}
+          </div>
           {sidebarOpen && (
             <div className="admin-profile-info">
               <h3 className="admin-profile-name">{fullName}</h3>
