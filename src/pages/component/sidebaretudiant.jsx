@@ -1,11 +1,10 @@
-// src/components/etudiant/Sidebar.jsx  (ou remplace ton fichier existant)
+// src/components/etudiant/Sidebar.jsx
 import React, { useEffect, useState } from 'react';
 import {
   Home,
   FileText,
   LogOut,
   Bell,
-  Settings,
   Clock,
   ChevronLeft,
   ChevronRight
@@ -13,15 +12,14 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import './sidebar.css';
 
-import api from '../../api';                // <-- adapte le chemin si besoin
+import api from '../../api';                  // <-- adapte le chemin si besoin
 import { signOut } from '../../firebaseClient'; // <-- adapte le chemin si besoin
 
 const menuItems = [
-  { id: 'dashboard',  icon: Home,     label: 'Tableau de bord', path: '/etudiant' },
-  { id: 'documents',  icon: FileText, label: 'Mes Documents',   path: '/etudiant/documents' },
-  { id: 'requests',   icon: Clock,    label: 'Mes Demandes',    path: '/etudiant/demandes' },
-  { id: 'notifications', icon: Bell,  label: 'Notifications',   path: '/etudiant/notifications' },
-  { id: 'settings',   icon: Settings, label: 'Paramètres',      path: '/etudiant/settings' }
+  { id: 'dashboard',    icon: Home,      label: 'Tableau de bord', path: '/etudiant' },
+  { id: 'documents',    icon: FileText,  label: 'Mes Documents',   path: '/etudiant/documents' },
+  { id: 'requests',     icon: Clock,     label: 'Mes Demandes',    path: '/etudiant/demandes' },
+  { id: 'notifications',icon: Bell,      label: 'Notifications',   path: '/etudiant/notifications' },
 ];
 
 const Sidebar = ({
@@ -30,7 +28,6 @@ const Sidebar = ({
   activeTab,
   setActiveTab,
   onLogout,
-  // userData (on n'utilise plus les props, on lit toujours /api/me)
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,7 +88,6 @@ const Sidebar = ({
   const handleLogout = async () => {
     try { await signOut(); } catch (_) {}
     if (onLogout) onLogout();
-    // nettoyages locaux éventuels
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
     navigate('/login'); // pas /admin
@@ -100,13 +96,25 @@ const Sidebar = ({
   // -- affichage depuis "me" --
   const firstName = (me?.prenom || '').trim();
   const lastName  = (me?.nom || '').trim();
-  const fullName  = loadingMe ? '…'
+
+  // Initials: prioritize prenom+nom, fallback to displayName, email, or "U"
+  let avatarText = '';
+  if (firstName || lastName) {
+    avatarText = `${firstName ? firstName[0] : ''}${lastName ? lastName[0] : ''}`.toUpperCase();
+  } else if (me?.displayName) {
+    avatarText = me.displayName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  } else if (me?.email) {
+    avatarText = me.email[0].toUpperCase();
+  } else {
+    avatarText = 'U'; // Ultimate fallback
+  }
+
+  const fullName   = loadingMe ? '…'
     : (firstName || lastName
         ? `${firstName}${lastName ? ` ${lastName}` : ''}`
         : (me?.displayName || me?.email?.split('@')[0] || '')
       );
-  const role      = loadingMe ? '' : (me?.role || '');
-  const photoURL  = (me?.photoURL && me.photoURL.trim()) ? me.photoURL : '/avatar.png';
+  const role       = loadingMe ? '' : (me?.role || '');
 
   return (
     <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : 'admin-sidebar-closed'}`}>
@@ -121,8 +129,23 @@ const Sidebar = ({
 
       <div className="admin-sidebar-content">
         <div className="admin-profile-section">
-          {/* Image de profil: on garde exactement ton balisage */}
-          <img src={photoURL} alt="Profile" className="admin-profile-pic" />
+          {/* Initials Avatar with admin-profile-pic CSS */}
+          <div
+            className="admin-profile-pic"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.45rem',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              background: 'linear-gradient(135deg, #17766e 0%, #5eead4 100%)',
+              color: '#fff',
+              userSelect: 'none'
+            }}
+          >
+            {avatarText}
+          </div>
           {sidebarOpen && (
             <div className="admin-profile-info">
               <h3 className="admin-profile-name">{fullName}</h3>
