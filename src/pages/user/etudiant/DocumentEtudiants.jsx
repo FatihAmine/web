@@ -166,7 +166,7 @@ const MesDocuments = () => {
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h1 className="mes-documents-page-title">Mes Documents (envoyés)</h1>
+          <h1 className="mes-documents-page-title">Mes Documents</h1>
           <div className="mes-documents-header-actions">
             <button className="mes-documents-notif-btn" aria-label="Notifications">
               <Bell size={20} />
