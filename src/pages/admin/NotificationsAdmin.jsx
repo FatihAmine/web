@@ -1,109 +1,215 @@
-import React, { useState } from 'react';
+// src/pages/admin/NotificationsAdmin.jsx
+import React, { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../component/sidebar';
-import CustomDropdown from '../component/CustomDropdown';
 import {
   Menu,
   X,
   Bell,
   Search,
-  Filter,
   Eye,
-  Trash2,
   CheckCircle,
-  AlertTriangle,
-  Shield,
-  Database,
-  BellOff,
+  XCircle,
+  AlertCircle,
+  User,
+  FileText,
+  MessageSquare,
   Clock,
-  AlertCircle
+  UserCircle,
+  RotateCw
 } from 'lucide-react';
 import '../../css/admin/NotificationsAdmin.css';
 import { useNavigate } from 'react-router-dom';
+import api from '../../api'; // ✅ axios avec ID token
 
 const userData = {
-  firstName: "Mohammed",
-  lastName: "Alaoui",
-  role: "Super Administrateur",
-  profilePic: "https://ui-avatars.com/api/?name=Mohammed+Alaoui&background=17766e&color=fff&size=200"
+  firstName: 'Mohammed',
+  lastName: 'Alaoui',
+  role: 'Super Administrateur',
+  profilePic:
+    'https://ui-avatars.com/api/?name=Mohammed+Alaoui&background=17766e&color=fff&size=200',
 };
 
-const typeIcons = {
-  info: CheckCircle,
-  alert: AlertTriangle,
-  security: Shield,
-  update: Database
-};
+// -- utils temps (accepte ISO, Date, Firestore Timestamp)
+function toDateAny(v) {
+  if (!v) return new Date();
+  if (v instanceof Date) return v;
+  if (typeof v === 'string' || typeof v === 'number') return new Date(v);
+  if (v?._seconds) return new Date(v._seconds * 1000);
+  if (v?.seconds) return new Date(v.seconds * 1000);
+  return new Date(v);
+}
+function formatTimeAgo(value) {
+  const ts = toDateAny(value);
+  const diffMs = Date.now() - ts.getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const d = Math.floor(h / 24);
+  return `il y a ${d} j`;
+}
 
-const typeColors = {
-  info: "#10b981",
-  alert: "#f59e0b",
-  security: "#ef4444",
-  update: "#3b82f6"
-};
+function StatusBadge({ status }) {
+  const map = {
+    pending: { color: '#f59e0b', text: 'En attente', Icon: AlertCircle },
+    in_progress: { color: '#3b82f6', text: 'En cours', Icon: Clock },
+    approved: { color: '#10b981', text: 'Approuvée', Icon: CheckCircle },
+    rejected: { color: '#ef4444', text: 'Rejetée', Icon: XCircle },
+  };
+  const { color, text, Icon } = map[status] || map.pending;
+  return (
+    <span
+      className="notif-status-badge"
+      style={{ background: `${color}1a`, color, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+    >
+      <Icon size={14} />
+      {text}
+    </span>
+  );
+}
 
-const demoNotifications = [
-  { id: 1, type: "info", title: "Sauvegarde réussie", message: "Base de données sauvegardée avec succès.", time: "Il y a 10 min", unread: false },
-  { id: 2, type: "alert", title: "Disque presque plein", message: "Seuil critique de stockage atteint (90%).", time: "Il y a 20min", unread: true },
-  { id: 3, type: "security", title: "Nouvelle connexion", message: "Connexion à partir d'un nouvel appareil.", time: "Il y a 30 min", unread: true },
-  { id: 4, type: "update", title: "Mise à jour système", message: "Version 1.2 installée.", time: "Il y a 1 h", unread: false },
-  { id: 5, type: "info", title: "Document généré", message: "Attestation créée pour Ahmed Bennani.", time: "Il y a 2 h", unread: true },
-  { id: 6, type: "alert", title: "Tentative échouée", message: "Échec de génération PDF pour Sara Idrissi.", time: "Il y a 3 h", unread: false },
-];
+function RoleChip({ role }) {
+  const label = role === 'parent' ? 'Parent' : 'Étudiant';
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '0.2rem 0.6rem',
+        borderRadius: 999,
+        fontSize: 12,
+        background: '#5eead41a',
+        color: '#17766e',
+        fontWeight: 600,
+      }}
+      title={`Rôle: ${label}`}
+    >
+      <UserCircle size={14} /> {label}
+    </span>
+  );
+}
+
+// mappe une notif venant du backend vers le format UI attendu
+function mapNotif(n) {
+  // côté backend on peut renvoyer soit un document "notification" enrichi,
+  // soit un résumé d'une demande. On gère les deux cas.
+  const request = n.request || n; // fallback
+  const requestedBy = request.requestedBy || n.requestedBy || {};
+  const requestedFor = request.requestedFor || n.requestedFor || {};
+
+  return {
+    id: request.id || request.requestId || n.id, // seulement pour la clé React
+    createdAt: n.createdAt || request.createdAt,
+    status: request.status || n.status || 'pending',
+    type: request.type || n.type || 'Document',
+    notes: request.notes || n.notes || '',
+    approvedAt: request.approvedAt || n.approvedAt,
+    rejectedAt: request.rejectedAt || n.rejectedAt,
+    rejectionReason: request.rejectionReason || n.rejectionReason,
+    requestedBy: {
+      name:
+        requestedBy.name ||
+        requestedBy.displayName ||
+        [requestedBy.prenom, requestedBy.nom].filter(Boolean).join(' ') ||
+        '—',
+      role: requestedBy.role || request.requestedByRole || 'etudiant',
+    },
+    requestedFor: {
+      name:
+        requestedFor.name ||
+        requestedFor.displayName ||
+        [requestedFor.prenom, requestedFor.nom].filter(Boolean).join(' ') ||
+        '—',
+      filiere: requestedFor.filiere || null,
+      niveau: requestedFor.niveau || null,
+    },
+  };
+}
 
 const AdminNotifications = () => {
-    const [sidebarOpen, setSidebarOpen] = useState(() => {
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [activeTab, setActiveTab] = useState('notifications');
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
-  const [confirmDelete, setConfirmDelete] = useState(null);
-  const [notifications, setNotifications] = useState(demoNotifications);
-  const navigate = useNavigate();
 
-  const handleLogout = () => {
-    console.log('Logout clicked');
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
+  const [error, setError] = useState('');
+
+  const [rejectModal, setRejectModal] = useState({ open: false, id: null, reason: '' });
+
+  const navigate = useNavigate();
+  const handleLogout = () => navigate('/admin');
+
+  // charge les notifications admin
+  const fetchNotifs = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.get('/notifications', {
+        params: { scope: 'admin', limit: 100 },
+      });
+      // data.items attendu → sinon fallback à data
+      const list = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+      setItems(list.map(mapNotif));
+    } catch (e) {
+      console.error('NOTIFS ERR', e?.response?.data || e.message);
+      setError("Impossible de charger les notifications.");
+      setItems([]); // vide en cas d'erreur
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filterOptions = [
-    { value: 'all', label: 'Tous types', icon: Filter, color: '#5eead4' },
-    { value: 'info', label: 'Info', icon: CheckCircle, color: '#10b981' },
-    { value: 'alert', label: 'Alerte', icon: AlertTriangle, color: '#f59e0b' },
-    { value: 'security', label: 'Sécurité', icon: Shield, color: '#ef4444' },
-    { value: 'update', label: 'Système', icon: Database, color: '#3b82f6' }
-  ];
+  useEffect(() => {
+    fetchNotifs();
+    // (optionnel) rechargement périodique :
+    // const t = setInterval(fetchNotifs, 30000);
+    // return () => clearInterval(t);
+  }, []);
 
-  function filterNotifications(notifs) {
-    return notifs
-      .filter(n => filter === "all" || n.type === filter)
-      .filter(n =>
-        n.title.toLowerCase().includes(search.toLowerCase()) ||
-        n.message.toLowerCase().includes(search.toLowerCase()) ||
-        n.time.toLowerCase().includes(search.toLowerCase())
-      );
-  }
+  const filtered = useMemo(() => {
+    const src = items;
+    if (!q.trim()) return src;
+    const s = q.toLowerCase();
+    return src.filter((n) => {
+      const hay = [
+        n.type,
+        n.notes,
+        n.requestedBy?.name,
+        n.requestedBy?.role,
+        n.requestedFor?.name,
+        n.requestedFor?.filiere,
+        n.requestedFor?.niveau,
+        n.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(s);
+    });
+  }, [items, q]);
 
-  function toggleRead(id) {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, unread: !n.unread } : n
-    ));
-  }
-
-  function handleDelete(id) {
-    setNotifications(notifications.filter(n => n.id !== id));
-    setConfirmDelete(null);
-  }
-
-  function markAllAsRead() {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
-  }
-
-  // Stats
-  const totalNotifs = notifications.length;
-  const unreadNotifs = notifications.filter(n => n.unread).length;
-  const infoNotifs = notifications.filter(n => n.type === 'info').length;
-  const alertNotifs = notifications.filter(n => n.type === 'alert').length;
+  // (UI démo) approbation / rejet locales — à remplacer plus tard par un PATCH backend si tu veux agir depuis cette page.
+  const approveLocal = (id) =>
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, status: 'approved', approvedAt: new Date() } : n)));
+  const openReject = (id) => setRejectModal({ open: true, id, reason: '' });
+  const submitRejectLocal = () => {
+    if (!rejectModal.id || !rejectModal.reason.trim()) return;
+    setItems((prev) =>
+      prev.map((n) =>
+        n.id === rejectModal.id
+          ? { ...n, status: 'rejected', rejectedAt: new Date(), rejectionReason: rejectModal.reason.trim() }
+          : n
+      )
+    );
+    setRejectModal({ open: false, id: null, reason: '' });
+  };
+  const cancelReject = () => setRejectModal({ open: false, id: null, reason: '' });
 
   return (
     <div className="admin-notif-container">
@@ -116,187 +222,235 @@ const AdminNotifications = () => {
         userData={userData}
       />
 
-      {sidebarOpen && (
-        <div
-          className="admin-notif-sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="admin-notif-sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
       <div className={`admin-notif-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="admin-header">
           <button
             className="admin-toggle-sidebar-btn mobile-menu-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label={sidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-label={sidebarOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h1 className="admin-page-title">Notifications</h1>
-          <div className="admin-header-actions">
+          <h1 className="admin-page-title">Notifications (Demandes)</h1>
+          <div className="admin-header-actions" style={{ gap: 8 }}>
+            <button className="admin-search-btn" onClick={fetchNotifs} title="Rafraîchir">
+              <RotateCw size={18} />
+            </button>
             <button className="admin-search-btn" aria-label="Notifications">
               <Bell size={20} />
-              {unreadNotifs > 0 && <span className="notification-badge"></span>}
+              {items.some((n) => n.status === 'pending' || n.status === 'in_progress') && (
+                <span className="notification-badge" />
+              )}
             </button>
           </div>
         </header>
 
         <main className="admin-notif-main">
-          <section className="admin-notif-content">
-            
-            {/* Stats Cards */}
-            <div className="admin-notif-stats-grid">
-              <div className="admin-notif-stat-card stat-total">
-                <div className="stat-icon">
-                  <Bell size={24} />
-                </div>
-                <div className="stat-info">
-                  <p className="stat-label">Total Notifications</p>
-                  <h3 className="stat-value">{totalNotifs}</h3>
-                </div>
-              </div>
-              <div className="admin-notif-stat-card stat-unread">
-                <div className="stat-icon">
-                  <AlertCircle size={24} />
-                </div>
-                <div className="stat-info">
-                  <p className="stat-label">Non Lues</p>
-                  <h3 className="stat-value">{unreadNotifs}</h3>
-                </div>
-              </div>
-              <div className="admin-notif-stat-card stat-info">
-                <div className="stat-icon">
-                  <CheckCircle size={24} />
-                </div>
-                <div className="stat-info">
-                  <p className="stat-label">Info</p>
-                  <h3 className="stat-value">{infoNotifs}</h3>
-                </div>
-              </div>
-              <div className="admin-notif-stat-card stat-alert">
-                <div className="stat-icon">
-                  <AlertTriangle size={24} />
-                </div>
-                <div className="stat-info">
-                  <p className="stat-label">Alertes</p>
-                  <h3 className="stat-value">{alertNotifs}</h3>
-                </div>
-              </div>
-            </div>
-
-            {/* Toolbar with Custom Dropdown */}
-            <div className="admin-notif-toolbar">
-              <CustomDropdown
-                options={filterOptions}
-                value={filter}
-                onChange={setFilter}
-                icon={Filter}
+          <div className="admin-notif-toolbar" style={{ gap: 12 }}>
+            <div className="admin-notif-searchrow">
+              <Search size={18} />
+              <input
+                className="admin-notif-search"
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Rechercher (type, motif, étudiant, parent, statut)…"
+                aria-label="Rechercher"
               />
-              <div className="admin-notif-searchrow">
-                <Search size={18} />
-                <input
-                  className="admin-notif-search"
-                  type="search"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Rechercher notifications..."
-                  aria-label="Rechercher"
-                />
-              </div>
-              {unreadNotifs > 0 && (
-                <button className="admin-notif-mark-all-btn" onClick={markAllAsRead}>
-                  <CheckCircle size={18} />
-                  <span>Tout marquer lu</span>
-                </button>
-              )}
             </div>
+          </div>
 
-            {/* Notifications Grid */}
+          {error && (
+            <div style={{ color: '#ef4444', marginBottom: 16, fontWeight: 600 }}>
+              {error} <button onClick={fetchNotifs} style={{ marginLeft: 8 }}>Réessayer</button>
+            </div>
+          )}
+
+          {/* Chargement */}
+          {loading ? (
             <div className="admin-notif-grid">
-              {filterNotifications(notifications).length === 0 ? (
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="admin-notif-card" style={{ opacity: 0.6 }}>
+                  <div className="notif-card-header">
+                    <div className="notif-icon" style={{ background: '#263244', width: 48, height: 48 }} />
+                    <div style={{ height: 14, width: 140, background: '#1f2a3a', borderRadius: 6 }} />
+                  </div>
+                  <div className="notif-card-body">
+                    <div style={{ height: 12, background: '#1f2a3a', borderRadius: 6 }} />
+                    <div style={{ height: 12, background: '#1f2a3a', borderRadius: 6, marginTop: 8 }} />
+                    <div style={{ height: 12, background: '#1f2a3a', borderRadius: 6, marginTop: 8 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="admin-notif-grid">
+              {filtered.length === 0 ? (
                 <div className="admin-notif-empty-state">
-                  <BellOff size={64} />
-                  <h3>Aucune notification trouvée</h3>
-                  <p>Essayez de modifier vos filtres de recherche</p>
+                  <Bell size={64} />
+                  <h3>Aucune notification</h3>
+                  <p>Essayez un autre mot-clé.</p>
                 </div>
               ) : (
-                filterNotifications(notifications).map(notif => {
-                  const NotifIcon = typeIcons[notif.type];
-                  const iconColor = typeColors[notif.type];
-                  return (
-                    <div
-                      key={notif.id}
-                      className={`admin-notif-card ${notif.unread ? 'admin-notif-unread' : ''}`}
-                    >
-                      <div className="notif-card-header">
-                        <div
-                          className="notif-icon"
-                          style={{
-                            background: iconColor + '1a',
-                            color: iconColor
-                          }}
-                        >
-                          <NotifIcon size={20} />
+                filtered.map((n) => (
+                  <div key={n.id} className="admin-notif-card">
+                    <div className="notif-card-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div className="notif-icon" style={{ background: '#17766e1a', color: '#17766e' }} title="Demande de document">
+                          <FileText size={20} />
                         </div>
-                        {notif.unread && <span className="notif-unread-badge">Nouveau</span>}
-                      </div>
-                      <div className="notif-card-body">
-                        <h3 className="notif-title">{notif.title}</h3>
-                        <p className="notif-message">{notif.message}</p>
-                        <div className="notif-meta">
-                          <div className="notif-meta-item">
-                            <Clock size={14} />
-                            <span>{notif.time}</span>
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{n.type || 'Type non renseigné'}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                            <StatusBadge status={n.status} />
+                            <span className="notif-time" title={toDateAny(n.createdAt).toLocaleString()}>
+                              <Clock size={14} style={{ marginRight: 6 }} />
+                              {formatTimeAgo(n.createdAt)}
+                            </span>
                           </div>
                         </div>
                       </div>
-                      <div className="notif-card-footer">
-                        <button
-                          className="notif-action-btn view"
-                          title={notif.unread ? "Marquer comme lu" : "Marquer comme non lu"}
-                          onClick={() => toggleRead(notif.id)}
-                        >
-                          <Eye size={16} />
-                          <span>{notif.unread ? 'Marquer lu' : 'Non lu'}</span>
-                        </button>
-
-                      </div>
+                      {/* (ID volontairement masqué côté UI) */}
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
 
-          {/* Delete Confirmation Modal */}
-          {confirmDelete && (
-            <div className="admin-notif-modal-backdrop">
-              <div className="admin-notif-modal">
-                <button
-                  className="admin-notif-modal-close"
-                  onClick={() => setConfirmDelete(null)}
-                >
-                  <X size={22} />
-                </button>
-                <h3 className="admin-notif-modal-title">
-                  <Trash2 size={18} style={{ verticalAlign: "middle", marginRight: 8, color: "#ef4444" }} />
-                  Supprimer la notification
-                </h3>
-                <div className="admin-notif-modal-fields">
-                  Voulez-vous vraiment supprimer cette notification ?
-                </div>
-                <button
-                  className="admin-notif-modal-submit admin-notif-modal-delete"
-                  onClick={() => handleDelete(confirmDelete)}
-                >
-                  <Trash2 size={15} style={{ verticalAlign: "middle", marginRight: 5 }} />
-                  Supprimer
-                </button>
-              </div>
+                    <div className="notif-card-body">
+                      <div className="notif-row">
+                        <div className="notif-label">
+                          <User size={16} />
+                          <span>Envoyée par</span>
+                        </div>
+                        <div className="notif-value">
+                          <strong>{n.requestedBy?.name || '—'}</strong> <RoleChip role={n.requestedBy?.role} />
+                        </div>
+                      </div>
+
+                      <div className="notif-row">
+                        <div className="notif-label">
+                          <User size={16} />
+                          <span>Pour</span>
+                        </div>
+                        <div className="notif-value">
+                          <strong>{n.requestedFor?.name || '—'}</strong>
+                          {n.requestedFor?.filiere || n.requestedFor?.niveau ? (
+                            <span style={{ marginLeft: 8, opacity: 0.8 }}>
+                              {[n.requestedFor?.niveau || '', n.requestedFor?.filiere || ''].filter(Boolean).join(' • ')}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="notif-row">
+                        <div className="notif-label">
+                          <MessageSquare size={16} />
+                          <span>Motif</span>
+                        </div>
+                        <div className="notif-value">{n.notes || '—'}</div>
+                      </div>
+
+                      {n.status === 'rejected' && n.rejectionReason && (
+                        <div className="notif-row">
+                          <div className="notif-label" style={{ color: '#ef4444' }}>
+                            <XCircle size={16} />
+                            <span>Motif du rejet</span>
+                          </div>
+                          <div className="notif-value" style={{ color: '#ef4444' }}>{n.rejectionReason}</div>
+                        </div>
+                      )}
+
+                      {n.status === 'approved' && (
+                        <div className="notif-row">
+                          <div className="notif-label" style={{ color: '#10b981' }}>
+                            <CheckCircle size={16} />
+                            <span>Demande approuvée</span>
+                          </div>
+                          <div className="notif-value" style={{ color: '#10b981' }}>
+                            {n.approvedAt ? `(${formatTimeAgo(n.approvedAt)})` : ''}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="notif-card-footer">
+                      {(n.status === 'pending' || n.status === 'in_progress') && (
+                        <>
+                          <button
+                            className="notif-action-btn view"
+                            title="Voir les détails (démo)"
+                            onClick={() => alert(`Aperçu (${n.type})`)}
+                          >
+                            <Eye size={16} />
+                            <span>Détails</span>
+                          </button>
+                          {/* Actions locales démo (remplace par PATCH backend si tu veux agir ici) */}
+                          <button className="notif-action-btn approve" onClick={() => approveLocal(n.id)} title="Approuver">
+                            <CheckCircle size={16} />
+                            <span>Approuver</span>
+                          </button>
+                          <button className="notif-action-btn reject" onClick={() => openReject(n.id)} title="Rejeter">
+                            <XCircle size={16} />
+                            <span>Rejeter</span>
+                          </button>
+                        </>
+                      )}
+
+                      {n.status === 'approved' && (
+                        <div className="notif-state-info" style={{ color: '#10b981', fontWeight: 600 }}>
+                          <CheckCircle size={16} style={{ marginRight: 6 }} />
+                          Demande approuvée
+                        </div>
+                      )}
+                      {n.status === 'rejected' && (
+                        <div className="notif-state-info" style={{ color: '#ef4444', fontWeight: 600 }}>
+                          <XCircle size={16} style={{ marginRight: 6 }} />
+                          Demande rejetée
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </main>
       </div>
+
+      {/* Modal Rejet (local/démo) */}
+      {rejectModal.open && (
+        <div className="admin-notif-modal-backdrop">
+          <div className="admin-notif-modal">
+            <button className="admin-notif-modal-close" onClick={cancelReject}>
+              <X size={22} />
+            </button>
+            <h3 className="admin-notif-modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <XCircle size={18} style={{ color: '#ef4444' }} />
+              Rejeter la demande
+            </h3>
+            <div className="admin-notif-modal-fields">
+              <label className="form-label">Motif du rejet *</label>
+              <textarea
+                rows={4}
+                className="form-textarea"
+                placeholder="Expliquez la raison du rejet…"
+                value={rejectModal.reason}
+                onChange={(e) => setRejectModal((m) => ({ ...m, reason: e.target.value }))}
+              />
+            </div>
+            <div className="admin-notif-modal-actions" style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <button className="admin-notif-modal-cancel" onClick={cancelReject}>Annuler</button>
+              <button
+                className="admin-notif-modal-submit"
+                onClick={submitRejectLocal}
+                disabled={!rejectModal.reason.trim()}
+                style={{ background: '#ef4444', color: 'white' }}
+              >
+                Rejeter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

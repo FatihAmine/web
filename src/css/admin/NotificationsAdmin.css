@@ -1,10 +1,13 @@
+/* RESET */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* CONTAINER & SIDEBAR */
+/* =========================
+   CONTAINER & SIDEBAR
+   ========================= */
 .admin-notif-container {
   display: flex;
   min-height: 100vh;
@@ -30,7 +33,9 @@
   }
 }
 
-/* MAIN CONTENT */
+/* =========================
+   MAIN CONTENT
+   ========================= */
 .admin-notif-main-content {
   flex: 1;
   background: #0f172a;
@@ -41,10 +46,6 @@
 .admin-notif-main-content.sidebar-closed { margin-left: 68px; }
 
 @media (max-width: 1024px) {
-  .admin-users-main-content.sidebar-open { margin-left: 180px; }
-  .admin-users-main-content.sidebar-closed { margin-left: 56px; }
-}
-@media (max-width: 1024px) {
   .admin-notif-main-content.sidebar-open { margin-left: 180px; }
   .admin-notif-main-content.sidebar-closed { margin-left: 56px; }
 }
@@ -53,7 +54,9 @@
   .admin-notif-main-content.sidebar-closed { margin-left: 0; }
 }
 
-/* HEADER */
+/* =========================
+   HEADER
+   ========================= */
 .admin-header {
   display: flex;
   align-items: center;
@@ -140,7 +143,9 @@
   .admin-page-title { font-size: 1.1rem; }
 }
 
-/* MAIN & CONTENT */
+/* =========================
+   MAIN & CONTENT WRAPPER
+   ========================= */
 .admin-notif-main {
   padding: 2rem;
   min-height: calc(100vh - 85px);
@@ -150,7 +155,9 @@
   margin: 0 auto;
 }
 
-/* STATS CARDS */
+/* =========================
+   STATS CARDS
+   ========================= */
 .admin-notif-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -198,11 +205,12 @@
 }
 .stat-total .stat-icon { background: rgba(94, 234, 212, 0.1); color: #5eead4; }
 .stat-unread .stat-icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-.stat-info .stat-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.admin-notif-stat-card.stat-info .stat-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 .stat-alert .stat-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-.stat-info {
-  flex: 1;
-}
+
+/* ✔️ corrige le conflit de nom "stat-info" */
+.admin-notif-stat-card .stat-info { flex: 1; }
+
 .stat-label {
   font-size: 0.9rem;
   color: #94a3b8;
@@ -232,7 +240,9 @@
   }
 }
 
-/* TOOLBAR */
+/* =========================
+   TOOLBAR (modern filter + search)
+   ========================= */
 .admin-notif-toolbar {
   display: flex;
   justify-content: flex-end;
@@ -241,34 +251,86 @@
   margin-bottom: 2rem;
   flex-wrap: wrap;
 }
+
+/* Filter dropdown */
 .admin-notif-filter-selectwrap {
   display: flex;
   align-items: center;
-  background: rgba(23, 118, 110, 0.1);
-  border: 1px solid rgba(23, 118, 110, 0.2);
+  background: linear-gradient(135deg, rgba(23, 118, 110, 0.08) 0%, rgba(30, 41, 59, 0.4) 100%);
+  border: 1.5px solid rgba(23, 118, 110, 0.25);
   color: #5eead4;
   border-radius: 0.75rem;
-  padding: 0.7rem 1rem;
-  gap: 0.6rem;
-  transition: all 0.3s;
+  padding: 0.75rem 1.1rem;
+  gap: 0.7rem;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 2px 8px rgba(23, 118, 110, 0.08);
+  cursor: pointer;
 }
 .admin-notif-filter-selectwrap:hover {
-  background: rgba(23, 118, 110, 0.15);
-  border-color: rgba(23, 118, 110, 0.4);
+  background: linear-gradient(135deg, rgba(23, 118, 110, 0.15) 0%, rgba(30, 41, 59, 0.6) 100%);
+  border-color: rgba(94, 234, 212, 0.4);
+  box-shadow: 0 4px 16px rgba(23, 118, 110, 0.2);
+  transform: translateY(-2px);
+}
+.admin-notif-filter-selectwrap::after {
+  content: '';
+  position: absolute;
+  right: 1.1rem;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #5eead4;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 0 3px rgba(94, 234, 212, 0.4));
+}
+.admin-notif-filter-selectwrap:hover::after {
+  transform: translateY(2px);
+  border-top-color: #fff;
 }
 .admin-notif-filter-select {
   border: none;
-  background: none;
+  background: transparent;
   color: #fff;
   font-weight: 600;
   font-size: 0.95rem;
   outline: none;
   cursor: pointer;
+  padding-right: 2rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  min-width: 140px;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .admin-notif-filter-select option {
-  background: #1e293b;
-  color: #f1f5f9;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #cbd5e1;
+  padding: 1rem 1.2rem;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgba(23, 118, 110, 0.1);
+  transition: all 0.2s;
 }
+.admin-notif-filter-select option:hover {
+  background: linear-gradient(135deg, rgba(23, 118, 110, 0.2) 0%, rgba(30, 41, 59, 0.9) 100%);
+  color: #5eead4;
+}
+.admin-notif-filter-select option:checked {
+  background: linear-gradient(135deg, #17766e 0%, #14635c 100%);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: inset 0 0 10px rgba(94, 234, 212, 0.3);
+}
+.admin-notif-filter-selectwrap:focus-within {
+  border-color: #5eead4;
+  box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.15), 0 4px 20px rgba(23, 118, 110, 0.25);
+}
+
+/* Search */
 .admin-notif-searchrow {
   display: flex;
   align-items: center;
@@ -293,9 +355,9 @@
   font-size: 1rem;
   outline: none;
 }
-.admin-notif-search::placeholder {
-  color: #64748b;
-}
+.admin-notif-search::placeholder { color: #64748b; }
+
+/* Mark all */
 .admin-notif-mark-all-btn {
   display: flex;
   align-items: center;
@@ -316,33 +378,26 @@
 }
 
 @media (max-width: 768px) {
-  .admin-notif-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .admin-notif-searchrow {
-    min-width: 100%;
-  }
-
+  .admin-notif-toolbar { flex-direction: column; align-items: stretch; }
+  .admin-notif-searchrow { min-width: 100%; }
 }
 
-/* NOTIFICATIONS GRID */
+/* =========================
+   NOTIFICATIONS GRID
+   ========================= */
 .admin-notif-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 1.5rem;
 }
-
 @media (max-width: 768px) {
-  .admin-notif-grid {
-    grid-template-columns: 1fr;
-  }
-  .admin-notif-main {
-    padding: 1.5rem 1rem;
-  }
+  .admin-notif-grid { grid-template-columns: 1fr; }
+  .admin-notif-main { padding: 1.5rem 1rem; }
 }
 
-/* NOTIFICATION CARD */
+/* =========================
+   NOTIFICATION CARD
+   ========================= */
 .admin-notif-card {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   border: 1px solid rgba(23, 118, 110, 0.2);
@@ -366,9 +421,7 @@
   transform: scaleX(0);
   transition: transform 0.3s;
 }
-.admin-notif-card:hover::before {
-  transform: scaleX(1);
-}
+.admin-notif-card:hover::before { transform: scaleX(1); }
 .admin-notif-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 30px rgba(23, 118, 110, 0.3);
@@ -391,6 +444,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(23,118,110,.25);
 }
 .notif-unread-badge {
   padding: 0.3rem 0.7rem;
@@ -401,6 +455,10 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+.notif-id {
+  color: #94a3b8;
+  font-weight: 600;
 }
 
 .notif-card-body {
@@ -424,18 +482,65 @@
   display: flex;
   align-items: center;
   margin-top: 0.5rem;
+  gap: 10px;
 }
 .notif-meta-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   color: #64748b;
   font-size: 0.85rem;
 }
-.notif-meta-item svg {
-  color: #5eead4;
+.notif-meta-item svg { color: #5eead4; }
+
+/* lignes de détail (Envoyée par / Pour / Motif) */
+.notif-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+@media (max-width: 520px) {
+  .notif-row { grid-template-columns: 1fr; }
+}
+.notif-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: .2px;
+}
+.notif-label svg { color: #5eead4; }
+.notif-value { color: #e2e8f0; }
+
+/* badge de statut */
+.notif-status-badge {
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
+/* horodatage "il y a …" */
+.notif-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: .9rem;
+}
+
+/* bandeau info final (approuvée / rejetée) */
+.notif-state-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .95rem;
+}
+
+/* footer actions */
 .notif-card-footer {
   display: flex;
   gap: 0.5rem;
@@ -465,6 +570,22 @@
   background: rgba(59, 130, 246, 0.1);
   transform: translateY(-2px);
 }
+.notif-action-btn.approve {
+  border-color: rgba(16,185,129,.35);
+  color: #10b981;
+}
+.notif-action-btn.approve:hover {
+  background: rgba(16,185,129,.12);
+  transform: translateY(-2px);
+}
+.notif-action-btn.reject {
+  border-color: rgba(239,68,68,.35);
+  color: #ef4444;
+}
+.notif-action-btn.reject:hover {
+  background: rgba(239,68,68,.12);
+  transform: translateY(-2px);
+}
 .notif-action-btn.delete {
   border-color: rgba(239, 68, 68, 0.3);
   color: #ef4444;
@@ -473,14 +594,13 @@
   background: rgba(239, 68, 68, 0.1);
   transform: translateY(-2px);
 }
-
 @media (max-width: 480px) {
-  .notif-action-btn span {
-    display: none;
-  }
+  .notif-action-btn span { display: none; }
 }
 
-/* EMPTY STATE */
+/* =========================
+   EMPTY STATE
+   ========================= */
 .admin-notif-empty-state {
   grid-column: 1 / -1;
   display: flex;
@@ -505,7 +625,9 @@
   color: #64748b;
 }
 
-/* MODAL */
+/* =========================
+   MODAL
+   ========================= */
 .admin-notif-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -550,9 +672,7 @@
   transition: color .14s;
   z-index: 5;
 }
-.admin-notif-modal-close:hover {
-  color: #ef4444;
-}
+.admin-notif-modal-close:hover { color: #ef4444; }
 .admin-notif-modal-fields {
   color: #f1f5f9;
   font-size: 1rem;
@@ -581,281 +701,53 @@
 .admin-notif-modal-delete {
   background: linear-gradient(135deg, #ef4444, #b91c1c);
 }
-.admin-notif-modal-delete:hover {
-  background: #ef4444;
+.admin-notif-modal-delete:hover { background: #ef4444; }
+
+/* actions dans le modal (Annuler / Confirmer) */
+.admin-notif-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.admin-notif-modal-cancel {
+  flex: 1;
+  padding: 0.75rem 1.2rem;
+  background: rgba(30,41,59,.6);
+  color: #e2e8f0;
+  border: 1px solid rgba(148,163,184,.25);
+  border-radius: .5rem;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all .25s;
+}
+.admin-notif-modal-cancel:hover {
+  background: rgba(30,41,59,.8);
+  transform: translateY(-1px);
+}
+
+/* textarea stylé (raison de rejet) */
+.form-textarea {
+  width: 100%;
+  background: rgba(2,6,23,.35);
+  border: 1px solid rgba(23,118,110,.35);
+  color: #e2e8f0;
+  border-radius: .6rem;
+  padding: .75rem .9rem;
+  outline: none;
+  resize: vertical;
+  min-height: 110px;
+  transition: box-shadow .25s, border-color .25s, background .25s;
+}
+.form-textarea::placeholder { color: #64748b; }
+.form-textarea:focus {
+  border-color: rgba(94,234,212,.55);
+  box-shadow: 0 0 0 3px rgba(94,234,212,.12);
+  background: rgba(2,6,23,.55);
 }
 
 @media (max-width: 700px) {
-  .admin-notif-modal {
-    max-width: 96%;
-    padding: 1rem;
-  }
+  .admin-notif-modal { max-width: 96%; padding: 1rem; }
 }
 @media (max-width: 480px) {
-  .admin-notif-modal {
-    max-width: 99%;
-    padding: 0.8rem;
-  }
-}
-/* UNIVERSAL FILTER DROPDOWN STYLES */
-.admin-users-filter-selectwrap,
-.admin-docs-filter-selectwrap,
-.admin-logs-filter-selectwrap,
-.admin-notif-filter-selectwrap {
-  display: flex;
-  align-items: center;
-  background: rgba(23, 118, 110, 0.1);
-  border: 1px solid rgba(23, 118, 110, 0.2);
-  color: #5eead4;
-  border-radius: 0.75rem;
-  padding: 0.7rem 1rem;
-  gap: 0.6rem;
-  transition: all 0.3s;
-  position: relative;
-}
-
-.admin-users-filter-selectwrap:hover,
-.admin-docs-filter-selectwrap:hover,
-.admin-logs-filter-selectwrap:hover,
-.admin-notif-filter-selectwrap:hover {
-  background: rgba(23, 118, 110, 0.15);
-  border-color: rgba(23, 118, 110, 0.4);
-}
-
-.admin-users-filter-select,
-.admin-docs-filter-select,
-.admin-logs-filter-select,
-.admin-notif-filter-select {
-  border: none;
-  background: none;
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.95rem;
-  outline: none;
-  cursor: pointer;
-  padding-right: 1.5rem;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  min-width: 140px;
-}
-
-/* Custom dropdown arrow for all filters */
-.admin-users-filter-selectwrap::after,
-.admin-docs-filter-selectwrap::after,
-.admin-logs-filter-selectwrap::after,
-.admin-notif-filter-selectwrap::after {
-  content: '▼';
-  position: absolute;
-  right: 1rem;
-  color: #5eead4;
-  font-size: 0.7rem;
-  pointer-events: none;
-}
-
-/* Styled options for all dropdowns */
-.admin-users-filter-select option,
-.admin-docs-filter-select option,
-.admin-logs-filter-select option,
-.admin-notif-filter-select option {
-  background: #1e293b;
-  color: #f1f5f9;
-  padding: 0.8rem 1rem;
-  font-weight: 500;
-}
-
-.admin-users-filter-select option:checked,
-.admin-docs-filter-select option:checked,
-.admin-logs-filter-select option:checked,
-.admin-notif-filter-select option:checked {
-  background: #17766e;
-  color: #fff;
-  font-weight: 700;
-}
-/* MODERN FILTER DROPDOWN STYLES */
-.admin-users-filter-selectwrap,
-.admin-docs-filter-selectwrap,
-.admin-logs-filter-selectwrap,
-.admin-notif-filter-selectwrap {
-  display: flex;
-  align-items: center;
-  background: linear-gradient(135deg, rgba(23, 118, 110, 0.08) 0%, rgba(30, 41, 59, 0.4) 100%);
-  border: 1.5px solid rgba(23, 118, 110, 0.25);
-  color: #5eead4;
-  border-radius: 0.75rem;
-  padding: 0.75rem 1.1rem;
-  gap: 0.7rem;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  box-shadow: 0 2px 8px rgba(23, 118, 110, 0.08);
-  cursor: pointer;
-}
-
-.admin-users-filter-selectwrap:hover,
-.admin-docs-filter-selectwrap:hover,
-.admin-logs-filter-selectwrap:hover,
-.admin-notif-filter-selectwrap:hover {
-  background: linear-gradient(135deg, rgba(23, 118, 110, 0.15) 0%, rgba(30, 41, 59, 0.6) 100%);
-  border-color: rgba(94, 234, 212, 0.4);
-  box-shadow: 0 4px 16px rgba(23, 118, 110, 0.2);
-  transform: translateY(-2px);
-}
-
-.admin-users-filter-selectwrap svg,
-.admin-docs-filter-selectwrap svg,
-.admin-logs-filter-selectwrap svg,
-.admin-notif-filter-selectwrap svg {
-  color: #5eead4;
-  filter: drop-shadow(0 0 4px rgba(94, 234, 212, 0.3));
-  transition: transform 0.3s;
-}
-
-.admin-users-filter-selectwrap:hover svg,
-.admin-docs-filter-selectwrap:hover svg,
-.admin-logs-filter-selectwrap:hover svg,
-.admin-notif-filter-selectwrap:hover svg {
-  transform: rotate(180deg);
-}
-
-.admin-users-filter-select,
-.admin-docs-filter-select,
-.admin-logs-filter-select,
-.admin-notif-filter-select {
-  border: none;
-  background: transparent;
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.95rem;
-  outline: none;
-  cursor: pointer;
-  padding-right: 2rem;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  min-width: 140px;
-  letter-spacing: 0.3px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-/* Custom animated dropdown arrow */
-.admin-users-filter-selectwrap::after,
-.admin-docs-filter-selectwrap::after,
-.admin-logs-filter-selectwrap::after,
-.admin-notif-filter-selectwrap::after {
-  content: '';
-  position: absolute;
-  right: 1.1rem;
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid #5eead4;
-  pointer-events: none;
-  transition: all 0.3s ease;
-  filter: drop-shadow(0 0 3px rgba(94, 234, 212, 0.4));
-}
-
-.admin-users-filter-selectwrap:hover::after,
-.admin-docs-filter-selectwrap:hover::after,
-.admin-logs-filter-selectwrap:hover::after,
-.admin-notif-filter-selectwrap:hover::after {
-  transform: translateY(2px);
-  border-top-color: #fff;
-}
-
-/* Beautiful styled dropdown options */
-.admin-users-filter-select option,
-.admin-docs-filter-select option,
-.admin-logs-filter-select option,
-.admin-notif-filter-select option {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  color: #cbd5e1;
-  padding: 1rem 1.2rem;
-  font-weight: 500;
-  font-size: 0.95rem;
-  border-bottom: 1px solid rgba(23, 118, 110, 0.1);
-  transition: all 0.2s;
-}
-
-.admin-users-filter-select option:hover,
-.admin-docs-filter-select option:hover,
-.admin-logs-filter-select option:hover,
-.admin-notif-filter-select option:hover {
-  background: linear-gradient(135deg, rgba(23, 118, 110, 0.2) 0%, rgba(30, 41, 59, 0.9) 100%);
-  color: #5eead4;
-}
-
-.admin-users-filter-select option:checked,
-.admin-docs-filter-select option:checked,
-.admin-logs-filter-select option:checked,
-.admin-notif-filter-select option:checked {
-  background: linear-gradient(135deg, #17766e 0%, #14635c 100%);
-  color: #fff;
-  font-weight: 700;
-  box-shadow: inset 0 0 10px rgba(94, 234, 212, 0.3);
-}
-
-/* Active/Focus state */
-.admin-users-filter-select:focus,
-.admin-docs-filter-select:focus,
-.admin-logs-filter-select:focus,
-.admin-notif-filter-select:focus {
-  outline: none;
-}
-
-.admin-users-filter-selectwrap:focus-within,
-.admin-docs-filter-selectwrap:focus-within,
-.admin-logs-filter-selectwrap:focus-within,
-.admin-notif-filter-selectwrap:focus-within {
-  border-color: #5eead4;
-  box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.15), 0 4px 20px rgba(23, 118, 110, 0.25);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .admin-users-filter-selectwrap,
-  .admin-docs-filter-selectwrap,
-  .admin-logs-filter-selectwrap,
-  .admin-notif-filter-selectwrap {
-    width: 100%;
-    padding: 0.7rem 1rem;
-  }
-  
-  .admin-users-filter-select,
-  .admin-docs-filter-select,
-  .admin-logs-filter-select,
-  .admin-notif-filter-select {
-    width: 100%;
-    min-width: unset;
-    font-size: 0.9rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .admin-users-filter-selectwrap,
-  .admin-docs-filter-selectwrap,
-  .admin-logs-filter-selectwrap,
-  .admin-notif-filter-selectwrap {
-    padding: 0.6rem 0.8rem;
-  }
-  
-  .admin-users-filter-select,
-  .admin-docs-filter-select,
-  .admin-logs-filter-select,
-  .admin-notif-filter-select {
-    font-size: 0.85rem;
-  }
-}
-
-/* Loading animation when dropdown is active */
-@keyframes filterGlow {
-  0%, 100% { box-shadow: 0 2px 8px rgba(23, 118, 110, 0.08); }
-  50% { box-shadow: 0 4px 20px rgba(94, 234, 212, 0.25); }
-}
-
-.admin-users-filter-selectwrap:active,
-.admin-docs-filter-selectwrap:active,
-.admin-logs-filter-selectwrap:active,
-.admin-notif-filter-selectwrap:active {
-  animation: filterGlow 1s ease-in-out;
+  .admin-notif-modal { max-width: 99%; padding: 0.8rem; }
 }

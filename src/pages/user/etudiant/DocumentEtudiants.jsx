@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// src/pages/etudiant/MesDocuments.jsx
+import React, { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../../component/sidebaretudiant';
 import CustomDropdown from '../../component/CustomDropdown';
 import {
@@ -8,135 +9,133 @@ import {
   X,
   Search,
   Filter,
-  Eye,
   Download,
   Calendar,
   CheckCircle,
-  XCircle,
   Clock,
-  TrendingUp
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/etudiant/DocumentEtudiants.css';
+import api from '../../../api'; // ← axios préconfiguré (avec ID token)
+
+function toDateAny(v) {
+  if (!v) return new Date();
+  if (v instanceof Date) return v;
+  if (typeof v === 'string' || typeof v === 'number') return new Date(v);
+  if (v?._seconds) return new Date(v._seconds * 1000);
+  if (v?.seconds) return new Date(v.seconds * 1000);
+  return new Date(v);
+}
+function fmtISO(d) {
+  const dt = toDateAny(d);
+  return isNaN(+dt) ? '' : dt.toISOString().slice(0, 10);
+}
+const nameOf = (obj) =>
+  obj?.displayName ||
+  [obj?.prenom, obj?.nom].filter(Boolean).join(' ') ||
+  obj?.email ||
+  '—';
 
 const MesDocuments = () => {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  
   const [activeTab, setActiveTab] = useState('documents');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [activeDocument, setActiveDocument] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [docs, setDocs] = useState([]);
 
   const navigate = useNavigate();
+  const handleLogout = () => navigate('/etudiant/login');
 
-  const userData = {
-    firstName: "Mohamed",
-    lastName: "Alami",
-    role: "Étudiant",
-    profilePic: "https://ui-avatars.com/api/?name=Mohamed+Alami&background=17766e&color=fff&size=200"
-  };
+  // Charger uniquement les demandes envoyées (sent) pour l'utilisateur courant
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      setErr('');
+      try {
+        // ✨ important : on demande "scope=mine&status=sent"
+        const { data } = await api.get('/requests', {
+          params: { scope: 'mine', status: 'sent', limit: 200 },
+        });
+        if (!mounted) return;
+        const items = Array.isArray(data?.items) ? data.items : [];
+        // Normalise pour l’affichage
+        const mapped = items.map((r) => ({
+          id: r.id,
+          title: r.type || 'Document',
+          docType: r.type || 'Document',
+          uploadDate: fmtISO(r.sentAt || r.updatedAt || r.createdAt),
+          year: String((toDateAny(r.sentAt || r.updatedAt || r.createdAt)).getFullYear()),
+          status: 'valid', // côté étudiant: "sent" = document disponible
+          // On ne met PAS d’URL directe ici → on passera par l’API /download
+          requestedForName: nameOf(r.requestedFor),
+          requestedByName: nameOf(r.requestedBy),
+        }));
+        setDocs(mapped);
+      } catch (e) {
+        console.error('GET /requests?scope=mine&status=sent', e?.response?.data || e.message);
+        setErr("Impossible de charger vos documents.");
+        setDocs([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
-  const documents = [
-    {
-      id: 1,
-      title: "Attestation de Scolarité",
-      docType: "Attestation",
-      uploadDate: "2025-09-15",
-      year: "2025",
-      status: "valid",
-      downloadUrl: "#",
-    },
-    {
-      id: 2,
-      title: "Bulletin S1",
-      docType: "Bulletin",
-      uploadDate: "2025-07-04",
-      year: "2024",
-      status: "valid",
-      downloadUrl: "#",
-    },
-    {
-      id: 3,
-      title: "Certificat de Réussite",
-      docType: "Certificat",
-      uploadDate: "2025-07-12",
-      year: "2025",
-      status: "valid",
-      downloadUrl: "#",
-    },
-    {
-      id: 5,
-      title: "Attestation d'Inscription",
-      docType: "Attestation",
-      uploadDate: "2024-09-25",
-      year: "2024",
-      status: "valid",
-      downloadUrl: "#",
-    },
-    {
-      id: 6,
-      title: "Relevé de Notes S2",
-      docType: "Bulletin",
-      uploadDate: "2024-06-30",
-      year: "2024",
-      status: "valid",
-      downloadUrl: "#",
-    }
-  ];
+  // Filtres dynamiques à partir des types présents
+  const filterOptions = useMemo(() => {
+    const set = new Set();
+    docs.forEach(d => { if (d.docType) set.add(String(d.docType)); });
+    return [
+      { value: '', label: 'Tous les types', icon: Filter, color: '#5eead4' },
+      ...Array.from(set).sort().map(t => ({
+        value: t, label: t, icon: FileText, color: '#5eead4'
+      }))
+    ];
+  }, [docs]);
 
-  const filterOptions = [
-    { value: '', label: 'Tous les types', icon: Filter, color: '#5eead4' },
-    { value: 'Attestation', label: 'Attestation', icon: FileText, color: '#10b981' },
-    { value: 'Bulletin', label: 'Bulletin', icon: FileText, color: '#3b82f6' },
-    { value: 'Certificat', label: 'Certificat', icon: FileText, color: '#8b5cf6' },
-    { value: 'Convention', label: 'Convention', icon: FileText, color: '#f59e0b' }
-  ];
+  // Helpers statut (côté étudiant: valid = document disponible)
+  const getDocStatusIcon = (status) => status === 'valid' ? CheckCircle : (status === 'pending' ? Clock : XCircle);
+  const getDocStatusColor = (status) => status === 'valid' ? '#10b981' : (status === 'pending' ? '#f59e0b' : '#ef4444');
+  const getDocStatusText = (status) => status === 'valid' ? 'Disponible' : (status === 'pending' ? 'En traitement' : 'Rejeté');
 
-  const handleLogout = () => {
-    navigate('/etudiant/login');
-  };
-
-  const getDocStatusIcon = status => {
-    switch (status) {
-      case "valid": return CheckCircle;
-      case "pending": return Clock;
-      case "rejected": return XCircle;
-      default: return CheckCircle;
-    }
-  };
-
-  const getDocStatusColor = status => {
-    switch (status) {
-      case "valid": return '#10b981';
-      case "pending": return '#f59e0b';
-      case "rejected": return '#ef4444';
-      default: return '#6b7280';
-    }
-  };
-
-  const getDocStatusText = status => {
-    switch (status) {
-      case "valid": return "Valide";
-      case "pending": return "En traitement";
-      case "rejected": return "Rejeté";
-      default: return "Valide";
-    }
-  };
-
-  const filteredDocuments = documents.filter(doc => {
-    const searchOk = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const filterOk = filterType === '' || doc.docType === filterType;
+  // Recherche/filtre
+  const filteredDocuments = docs.filter(doc => {
+    const searchOk = [doc.title, doc.requestedForName, doc.requestedByName].join(' ').toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const filterOk = !filterType || String(doc.docType).toLowerCase() === filterType.toLowerCase();
     return searchOk && filterOk;
   });
 
   // Stats
-  const totalDocs = documents.length;
-  const validDocs = documents.filter(d => d.status === 'valid').length;
-  const pendingDocs = documents.filter(d => d.status === 'pending').length;
+  const totalDocs = docs.length;
+  const validDocs = docs.filter(d => d.status === 'valid').length;
+  const pendingDocs = docs.filter(d => d.status === 'pending').length;
+
+  // Télécharger en appelant l’API backend (sécurisée)
+  const handleDownload = async (docItem) => {
+    try {
+      const { data } = await api.get(`/requests/${docItem.id}/download`);
+      if (data?.url) {
+        // ouvre l'URL Cloudinary en nouvelle fenêtre/onglet
+        window.open(data.url, '_blank', 'noopener,noreferrer');
+      } else {
+        alert('Fichier introuvable pour ce document.');
+      }
+    } catch (e) {
+      console.error('download failed', e?.response?.data || e.message);
+      alert('Téléchargement impossible.');
+    }
+  };
 
   return (
     <div className="mes-documents-page">
@@ -146,14 +145,16 @@ const MesDocuments = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        userData={userData}
+        userData={{
+          firstName: "Mohamed",
+          lastName: "Alami",
+          role: "Étudiant",
+          profilePic: "https://ui-avatars.com/api/?name=Mohamed+Alami&background=17766e&color=fff&size=200"
+        }}
       />
 
       {sidebarOpen && (
-        <div 
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
       )}
 
       <main className={`mes-documents-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
@@ -165,7 +166,7 @@ const MesDocuments = () => {
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h1 className="mes-documents-page-title">Mes Documents</h1>
+          <h1 className="mes-documents-page-title">Mes Documents (envoyés)</h1>
           <div className="mes-documents-header-actions">
             <button className="mes-documents-notif-btn" aria-label="Notifications">
               <Bell size={20} />
@@ -178,27 +179,21 @@ const MesDocuments = () => {
           {/* Stats Cards */}
           <div className="mes-documents-stats-grid">
             <div className="mes-documents-stat-card stat-total">
-              <div className="stat-icon">
-                <FileText size={24} />
-              </div>
+              <div className="stat-icon"><FileText size={24} /></div>
               <div className="stat-info">
                 <p className="stat-label">Total Documents</p>
                 <h3 className="stat-value">{totalDocs}</h3>
               </div>
             </div>
             <div className="mes-documents-stat-card stat-valid">
-              <div className="stat-icon">
-                <CheckCircle size={24} />
-              </div>
+              <div className="stat-icon"><CheckCircle size={24} /></div>
               <div className="stat-info">
-                <p className="stat-label">Valides</p>
+                <p className="stat-label">Disponibles</p>
                 <h3 className="stat-value">{validDocs}</h3>
               </div>
             </div>
             <div className="mes-documents-stat-card stat-pending">
-              <div className="stat-icon">
-                <Clock size={24} />
-              </div>
+              <div className="stat-icon"><Clock size={24} /></div>
               <div className="stat-info">
                 <p className="stat-label">En Traitement</p>
                 <h3 className="stat-value">{pendingDocs}</h3>
@@ -218,9 +213,9 @@ const MesDocuments = () => {
               <Search size={18} />
               <input
                 type="text"
-                placeholder="Rechercher documents..."
+                placeholder="Rechercher documents (titre / noms)..."
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="mes-documents-search-input"
               />
             </div>
@@ -228,65 +223,56 @@ const MesDocuments = () => {
 
           {/* Documents Grid */}
           <div className="mes-documents-grid">
-            {filteredDocuments.length === 0 ? (
+            {loading ? (
+              <div className="mes-documents-empty">
+                <Clock size={64} />
+                <h3>Chargement…</h3>
+              </div>
+            ) : err ? (
+              <div className="mes-documents-empty">
+                <AlertCircle size={64} />
+                <h3>{err}</h3>
+              </div>
+            ) : filteredDocuments.length === 0 ? (
               <div className="mes-documents-empty">
                 <FileText size={64} />
-                <h3>Aucun document trouvé</h3>
-                <p>
-                  {searchTerm || filterType
-                    ? "Essayez de modifier vos critères de recherche"
-                    : "Aucun document archivé pour le moment"}
-                </p>
+                <h3>Aucun document envoyé</h3>
+                <p>Les documents apparaîtront ici dès qu’ils seront envoyés par l’administration.</p>
               </div>
             ) : (
-              filteredDocuments.map(doc => {
+              filteredDocuments.map((doc) => {
                 const StatusIcon = getDocStatusIcon(doc.status);
                 return (
                   <div key={doc.id} className="mes-documents-card">
                     <div className="doc-card-header">
-                      <div className="doc-icon">
-                        <FileText size={20} />
-                      </div>
-                      <span 
+                      <div className="doc-icon"><FileText size={20} /></div>
+                      <span
                         className="doc-status"
-                        style={{
-                          background: `${getDocStatusColor(doc.status)}1a`,
-                          color: getDocStatusColor(doc.status)
-                        }}
+                        style={{ background: `${getDocStatusColor(doc.status)}1a`, color: getDocStatusColor(doc.status) }}
                       >
                         <StatusIcon size={16} />
                         {getDocStatusText(doc.status)}
                       </span>
                     </div>
+
                     <div className="doc-card-body">
                       <h3 className="doc-title">{doc.title}</h3>
                       <div className="doc-meta">
-                        <div className="doc-meta-item">
-                          <Calendar size={14} />
-                          <span>{doc.uploadDate}</span>
-                        </div>
-                        <div className="doc-meta-item">
-                          <FileText size={14} />
-                          <span>Année {doc.year}</span>
-                        </div>
+                        <div className="doc-meta-item"><Calendar size={14} /><span>{doc.uploadDate}</span></div>
+                        <div className="doc-meta-item"><FileText size={14} /><span>Année {doc.year}</span></div>
                       </div>
                       <div className="doc-type-badge">
-                        <span className={`doc-type ${doc.docType.toLowerCase()}`}>
+                        <span className={`doc-type ${String(doc.docType).toLowerCase().replace(/\s+/g, '-')}`}>
                           {doc.docType}
                         </span>
                       </div>
                     </div>
+
                     <div className="doc-card-footer">
-                      {doc.status === "valid" && doc.downloadUrl && (
-                        <a
-                          href={doc.downloadUrl}
-                          className="doc-action-btn download"
-                          download
-                        >
-                          <Download size={16} />
-                          <span>Télécharger</span>
-                        </a>
-                      )}
+                      <button className="doc-action-btn download" onClick={() => handleDownload(doc)}>
+                        <Download size={16} />
+                        <span>Télécharger</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -295,72 +281,6 @@ const MesDocuments = () => {
           </div>
         </div>
       </main>
-
-      {/* Details Modal */}
-      {showDetailsModal && activeDocument && (
-        <div className="mes-documents-modal-backdrop">
-          <div className="mes-documents-modal">
-            <button
-              className="mes-documents-modal-close"
-              onClick={() => setShowDetailsModal(false)}
-            >
-              <X size={22} />
-            </button>
-            <h3 className="mes-documents-modal-title">
-              <FileText size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#5eead4"}} />
-              Détail du document
-            </h3>
-            <div className="mes-documents-modal-fields">
-              <div className="modal-field">
-                <strong>Titre :</strong>
-                <span>{activeDocument.title}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Type :</strong>
-                <span>{activeDocument.docType}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Année :</strong>
-                <span>{activeDocument.year}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Date d'archivage :</strong>
-                <span>{activeDocument.uploadDate}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Statut :</strong>
-                <span style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: '999px',
-                  background: `${getDocStatusColor(activeDocument.status)}1a`,
-                  color: getDocStatusColor(activeDocument.status),
-                  fontWeight: 600,
-                  display: 'inline-block'
-                }}>
-                  {getDocStatusText(activeDocument.status)}
-                </span>
-              </div>
-            </div>
-            <div className="mes-documents-modal-footer">
-              {activeDocument.downloadUrl && activeDocument.status === 'valid' && (
-                <a
-                  href={activeDocument.downloadUrl}
-                  className="mes-documents-download-btn"
-                  download
-                >
-                  <Download size={18} /> Télécharger
-                </a>
-              )}
-              <button 
-                className="mes-documents-close-btn" 
-                onClick={() => setShowDetailsModal(false)}
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

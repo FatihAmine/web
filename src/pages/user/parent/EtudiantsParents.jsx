@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// src/pages/user/parent/EtudiantsParents.jsx
+import React, { useEffect, useState } from 'react';
 import Sidebar from '../../component/sidebarparent';
 import {
   Bell,
@@ -6,59 +7,73 @@ import {
   X,
   User,
   Mail,
-  Calendar,
   GraduationCap,
-  CheckCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/parent/EtudiantsParents.css';
+import api from '../../../api';
 
 const EtudiantsParents = () => {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  
+
   const [activeTab, setActiveTab] = useState('children');
+
+  const [children, setChildren] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
   const [selectedChild, setSelectedChild] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
   const navigate = useNavigate();
-
-  const userData = {
-    firstName: "Fatima",
-    lastName: "Bennani",
-    role: "Parent",
-    profilePic: "https://ui-avatars.com/api/?name=Fatima+Bennani&background=17766e&color=fff&size=200"
-  };
-
-  const childrenData = [
-    {
-      id: 1,
-      name: "Ahmed Bennani",
-      class: "1ère année Informatique",
-      status: "active",
-      birthDate: "26/09/2005",
-      matricule: "YNOV2025111",
-      email: "ahmed.bennani@ynov.ma",
-      year: "2024-2025"
-    },
-    {
-      id: 2,
-      name: "Sara Bennani",
-      class: "3ème année Marketing",
-      status: "active",
-      birthDate: "14/06/2003",
-      matricule: "YNOV2025033",
-      email: "sara.bennani@ynov.ma",
-      year: "2024-2025"
-    }
-  ];
 
   const handleLogout = () => {
     navigate('/parent/login');
   };
 
-  const openChildModal = (child) => {
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      setLoadError('');
+      try {
+        const { data } = await api.get('/parent/children'); // { ok, items: [...] }
+        if (!mounted) return;
+        setChildren(Array.isArray(data?.items) ? data.items : []);
+      } catch (e) {
+        console.error('GET /parent/children failed', e?.response?.data || e.message);
+        if (!mounted) return;
+        setLoadError("Impossible de charger la liste des enfants.");
+        setChildren([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const displayNameOf = (c) =>
+    c?.displayName ||
+    `${c?.prenom || ''} ${c?.nom || ''}`.trim() ||
+    c?.email ||
+    c?.uid;
+
+  const classOf = (c) =>
+    [c?.niveau, c?.filiere].filter(Boolean).join(' • ');
+
+  const openChildModal = (childRaw) => {
+    const child = {
+      uid: childRaw?.uid,
+      name: displayNameOf(childRaw),
+      class: classOf(childRaw),
+      year: childRaw?.academicYear || childRaw?.annee || null,
+      birthDate: childRaw?.birthDate || null,
+      matricule: childRaw?.matricule || childRaw?.studentId || null,
+      email: childRaw?.email || null,
+    };
     setSelectedChild(child);
     setShowModal(true);
   };
@@ -76,19 +91,13 @@ const EtudiantsParents = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        userData={userData}
       />
 
-      {sidebarOpen && (
-        <div 
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
       <main className={`parent-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="parent-header">
-          <button 
+          <button
             className="parent-toggle-sidebar-btn mobile-menu-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label="Toggle Sidebar"
@@ -111,57 +120,85 @@ const EtudiantsParents = () => {
             </p>
           </div>
 
-          <div className="parent-children-grid">
-            {childrenData.map(child => (
-              <div className="parent-children-card" key={child.id}>
-                <div className="child-card-header">
-                  <div className="child-avatar">
-                    <User size={32} />
-                  </div>
-                  <span className="child-status-badge">
-                    <CheckCircle size={14} />
-                    Actif
-                  </span>
-                </div>
-                <div className="child-card-body">
-                  <h3 className="child-name">{child.name}</h3>
-                  <div className="child-info">
-                    <div className="child-info-item">
-                      <GraduationCap size={16} />
-                      <span>{child.class}</span>
+          {loading && (
+            <div className="parent-children-empty">
+              <User size={48} />
+              <h3>Chargement…</h3>
+              <p>Récupération de vos enfants.</p>
+            </div>
+          )}
+
+          {!loading && loadError && (
+            <div className="parent-children-empty">
+              <User size={48} />
+              <h3>Erreur</h3>
+              <p>{loadError}</p>
+            </div>
+          )}
+
+          {!loading && !loadError && children.length === 0 && (
+            <div className="parent-children-empty">
+              <User size={48} />
+              <h3>Aucun enfant</h3>
+              <p>Aucun étudiant n’est rattaché à votre compte.</p>
+            </div>
+          )}
+
+          {!loading && !loadError && children.length > 0 && (
+            <div className="parent-children-grid">
+              {children.map((c) => {
+                const name = displayNameOf(c);
+                const klass = classOf(c);
+                const email = c?.email;
+
+                return (
+                  <div className="parent-children-card" key={c.uid}>
+                    <div className="child-card-header">
+                      <div className="child-avatar">
+                        <User size={32} />
+                      </div>
                     </div>
-                    <div className="child-info-item">
-                      <Mail size={16} />
-                      <span>{child.email}</span>
+                    <div className="child-card-body">
+                      <h3 className="child-name">{name}</h3>
+                      <div className="child-info">
+                        {klass && (
+                          <div className="child-info-item">
+                            <GraduationCap size={16} />
+                            <span>{klass}</span>
+                          </div>
+                        )}
+                        {email && (
+                          <div className="child-info-item">
+                            <Mail size={16} />
+                            <span>{email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="child-card-footer">
+                      <button
+                        className="child-details-btn"
+                        onClick={() => openChildModal(c)}
+                      >
+                        Voir les détails
+                      </button>
                     </div>
                   </div>
-                </div>
-                <div className="child-card-footer">
-                  <button 
-                    className="child-details-btn" 
-                    onClick={() => openChildModal(child)}
-                  >
-                    Voir les détails
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Modal */}
       {showModal && selectedChild && (
         <div className="parent-children-modal-backdrop">
           <div className="parent-children-modal">
-            <button 
-              className="parent-children-modal-close" 
-              onClick={closeChildModal}
-            >
+            <button className="parent-children-modal-close" onClick={closeChildModal}>
               <X size={22} />
             </button>
             <h3 className="parent-children-modal-title">
-              <User size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#5eead4"}} />
+              <User size={18} style={{ verticalAlign: 'middle', marginRight: 8, color: '#5eead4' }} />
               Détails de l'étudiant
             </h3>
             <div className="parent-children-modal-body">
@@ -169,47 +206,43 @@ const EtudiantsParents = () => {
                 <strong>Nom complet :</strong>
                 <span>{selectedChild.name}</span>
               </div>
-              <div className="modal-field">
-                <strong>Classe :</strong>
-                <span>{selectedChild.class}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Année scolaire :</strong>
-                <span>{selectedChild.year}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Date de naissance :</strong>
-                <span>{selectedChild.birthDate}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Matricule :</strong>
-                <span>{selectedChild.matricule}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Email :</strong>
-                <span>{selectedChild.email}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Statut :</strong>
-                <span style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: '999px',
-                  background: '#10b9811a',
-                  color: '#10b981',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem'
-                }}>
-                  <CheckCircle size={14} />
-                  Actif
-                </span>
-              </div>
+
+              {selectedChild.class && (
+                <div className="modal-field">
+                  <strong>Classe :</strong>
+                  <span>{selectedChild.class}</span>
+                </div>
+              )}
+
+              {selectedChild.year && (
+                <div className="modal-field">
+                  <strong>Année scolaire :</strong>
+                  <span>{selectedChild.year}</span>
+                </div>
+              )}
+
+              {selectedChild.birthDate && (
+                <div className="modal-field">
+                  <strong>Date de naissance :</strong>
+                  <span>{selectedChild.birthDate}</span>
+                </div>
+              )}
+
+              {selectedChild.matricule && (
+                <div className="modal-field">
+                  <strong>Matricule :</strong>
+                  <span>{selectedChild.matricule}</span>
+                </div>
+              )}
+
+              {selectedChild.email && (
+                <div className="modal-field">
+                  <strong>Email :</strong>
+                  <span>{selectedChild.email}</span>
+                </div>
+              )}
             </div>
-            <button 
-              className="parent-children-modal-close-btn" 
-              onClick={closeChildModal}
-            >
+            <button className="parent-children-modal-close-btn" onClick={closeChildModal}>
               Fermer
             </button>
           </div>

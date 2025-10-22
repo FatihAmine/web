@@ -1,186 +1,202 @@
-import React, { useState } from 'react';
+// src/pages/etudiant/DemandesEtudiants.jsx
+import React, { useEffect, useState } from 'react';
 import Sidebar from '../../component/sidebaretudiant';
-import CustomDropdown from '../../component/CustomDropdown';
 import {
   Bell,
   FileText,
   Menu,
   X,
   Plus,
-  Search,
-  Filter,
   Eye,
-  Download,
   Calendar,
   Send,
-  User,
   CheckCircle,
   XCircle,
   AlertCircle,
   Clock,
-  Info
+  RotateCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/etudiant/DemandesEtudiants.css';
+import api from '../../../api'; // axios avec ID token
+
+const OTHER_SENTINEL = '__OTHER__';
+
+/* Utils date (gère ISO / Date / Firestore Timestamp) */
+function toDateAny(v) {
+  if (!v) return new Date();
+  if (v instanceof Date) return v;
+  if (typeof v === 'string' || typeof v === 'number') return new Date(v);
+  if (v?._seconds) return new Date(v._seconds * 1000);
+  if (v?.seconds) return new Date(v.seconds * 1000);
+  return new Date(v);
+}
+function formatYYYYMMDD(v) {
+  const d = toDateAny(v);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/* Map backend → UI */
+function mapRequest(r) {
+  return {
+    id: r.id || r.requestId,
+    documentType: r.type || 'Document',
+    requestDate: formatYYYYMMDD(r.createdAt || r.submittedAt || new Date()), // ← date d’envoi de la demande
+    status: r.status || 'pending', // pending | in_progress | approved | rejected | sent
+    reason: r.notes || '',          // ← motif / note de la demande
+    rejectionReason: r.rejectionReason || '',
+    processedBy: r.assignedToName || null,
+    completedDate: r.sentAt
+      ? formatYYYYMMDD(r.sentAt)
+      : r.approvedAt
+      ? formatYYYYMMDD(r.approvedAt)
+      : null,
+  };
+}
 
 const StudentRequests = () => {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  
   const [activeTab, setActiveTab] = useState('requests');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [activeRequest, setActiveRequest] = useState(null);
+
   const [selectedDocumentType, setSelectedDocumentType] = useState('');
+  const [customDocumentType, setCustomDocumentType] = useState('');
   const [requestReason, setRequestReason] = useState('');
-  const [urgency, setUrgency] = useState('normal');
-  
+  const [creating, setCreating] = useState(false);
+
   const navigate = useNavigate();
-
-  const userData = {
-    firstName: "Mohamed",
-    lastName: "Alami",
-    role: "Étudiant",
-    profilePic: "https://ui-avatars.com/api/?name=Mohamed+Alami&background=17766e&color=fff&size=200"
-  };
-
-  const requests = [
-    {
-      id: 1,
-      documentType: "Attestation de Scolarité",
-      requestDate: "2025-10-10",
-      status: "pending",
-      reason: "Pour la banque",
-      urgency: "urgent",
-      estimatedDate: "2025-10-15",
-      trackingNumber: "REQ-2025-001234"
-    },
-    {
-      id: 2,
-      documentType: "Relevé de Notes S1",
-      requestDate: "2025-10-08",
-      status: "in_progress",
-      reason: "Candidature master",
-      urgency: "normal",
-      estimatedDate: "2025-10-12",
-      trackingNumber: "REQ-2025-001198",
-      processedBy: "Mme. Benali"
-    },
-    {
-      id: 3,
-      documentType: "Certificat de Réussite",
-      requestDate: "2025-10-01",
-      status: "approved",
-      reason: "Dossier employeur",
-      urgency: "normal",
-      completedDate: "2025-10-05",
-      trackingNumber: "REQ-2025-001145",
-      processedBy: "M. Tazi",
-      downloadUrl: "#"
-    },
-    {
-      id: 4,
-      documentType: "Convention de Stage",
-      requestDate: "2025-09-28",
-      status: "rejected",
-      reason: "Stage à l'étranger",
-      urgency: "urgent",
-      rejectionReason: "Documents incomplets - Stage hors Maroc nécessite accord préalable",
-      trackingNumber: "REQ-2025-001089",
-      processedBy: "Mme. Idrissi"
-    },
-    {
-      id: 5,
-      documentType: "Attestation d'Inscription",
-      requestDate: "2025-09-25",
-      status: "approved",
-      reason: "Assurance étudiante",
-      urgency: "normal",
-      completedDate: "2025-09-27",
-      trackingNumber: "REQ-2025-001034",
-      processedBy: "M. Alami",
-      downloadUrl: "#"
-    }
-  ];
+  const handleLogout = () => navigate('/etudiant/login');
 
   const documentTypes = [
-    "Attestation de Scolarité",
+    'Attestation de Scolarité',
     "Attestation d'Inscription",
     "Attestation de Réussite",
-    "Certificat de Scolarité",
-    "Relevé de Notes",
-    "Bulletin Semestriel",
-    "Convention de Stage",
-    "Certificat de Stage",
-    "Attestation de Non-Redoublement"
+    'Certificat de Scolarité',
+    'Relevé de Notes',
+    'Bulletin Semestriel',
+    'Convention de Stage',
+    'Certificat de Stage',
+    'Attestation de Non-Redoublement',
+    OTHER_SENTINEL, // Autre (préciser)
   ];
 
-  const filterOptions = [
-    { value: '', label: 'Tous les statuts', icon: Filter, color: '#5eead4' },
-    { value: 'pending', label: 'En attente', icon: AlertCircle, color: '#f59e0b' },
-    { value: 'in_progress', label: 'En cours', icon: Clock, color: '#3b82f6' },
-    { value: 'approved', label: 'Approuvées', icon: CheckCircle, color: '#10b981' },
-    { value: 'rejected', label: 'Rejetées', icon: XCircle, color: '#ef4444' }
-  ];
-
-  const handleLogout = () => {
-    navigate('/etudiant/login');
+  const normalizeList = (data) => {
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.results)) return data.results;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    return [];
   };
 
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'approved': return CheckCircle;
-      case 'rejected': return XCircle;
-      case 'pending': return AlertCircle;
-      case 'in_progress': return Clock;
-      default: return Clock;
+  /** Fetch: toutes mes demandes */
+  const fetchRequests = async () => {
+    setLoading(true);
+    setErr('');
+    try {
+      const { data } = await api.get('/requests', { params: { scope: 'mine', limit: 100 } });
+      const list = normalizeList(data).map(mapRequest);
+      setRequests(list);
+    } catch (e) {
+      console.error('GET /requests?scope=mine ERR', e?.response?.data || e.message);
+      setErr(
+        e?.response?.data?.error ||
+          e?.response?.data?.message ||
+          "Impossible de charger vos demandes."
+      );
+      setRequests([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'approved': return '#10b981';
-      case 'rejected': return '#ef4444';
-      case 'pending': return '#f59e0b';
-      case 'in_progress': return '#3b82f6';
-      default: return '#6b7280';
-    }
-  };
+  useEffect(() => { fetchRequests(); }, []);
 
-  const getStatusText = (status) => {
-    switch(status) {
-      case 'approved': return 'Approuvé';
-      case 'rejected': return 'Rejeté';
-      case 'pending': return 'En attente';
-      case 'in_progress': return 'En cours';
-      default: return 'En attente';
-    }
-  };
-
-  const filteredRequests = requests.filter(request => {
-    const matchesSearch = request.documentType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          request.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === '' || request.status === filterStatus;
-    return matchesSearch && matchesFilter;
-  });
-
-  const handleNewRequest = (e) => {
+  // Création: POST /api/requests
+  const handleNewRequest = async (e) => {
     e.preventDefault();
-    setShowNewRequestModal(false);
-    setSelectedDocumentType('');
-    setRequestReason('');
-    setUrgency('normal');
+    const finalType =
+      selectedDocumentType === OTHER_SENTINEL
+        ? customDocumentType.trim()
+        : selectedDocumentType;
+
+    if (!finalType) { alert('Veuillez préciser le type de document.'); return; }
+    if (!requestReason.trim()) { alert('Veuillez saisir le motif de la demande.'); return; }
+    if (creating) return;
+
+    setCreating(true);
+    try {
+      const payload = { type: finalType, notes: requestReason.trim() };
+      const { data } = await api.post('/requests', payload);
+      setRequests((prev) => [
+        mapRequest({ id: data.id, type: finalType, status: data.status || 'pending', notes: requestReason.trim(), createdAt: new Date() }),
+        ...prev,
+      ]);
+      setShowNewRequestModal(false);
+      setSelectedDocumentType('');
+      setCustomDocumentType('');
+      setRequestReason('');
+      alert('Votre demande a été envoyée avec succès.');
+    } catch (err2) {
+      console.error('POST /requests ERR', err2?.response?.data || err2.message);
+      alert("Impossible d’envoyer la demande. Réessayez.");
+    } finally {
+      setCreating(false);
+    }
   };
 
+  // Statuts
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'approved':   return CheckCircle;
+      case 'rejected':   return XCircle;
+      case 'pending':    return AlertCircle;
+      case 'in_progress':return Clock;
+      case 'sent':       return Send;
+      default:           return Clock;
+    }
+  };
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved':   return '#10b981';
+      case 'rejected':   return '#ef4444';
+      case 'pending':    return '#f59e0b';
+      case 'in_progress':return '#3b82f6';
+      case 'sent':       return '#0ea5e9';
+      default:           return '#6b7280';
+    }
+  };
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'approved':   return 'Approuvé';
+      case 'rejected':   return 'Rejeté';
+      case 'pending':    return 'En attente';
+      case 'in_progress':return 'En cours';
+      case 'sent':       return 'Envoyé';
+      default:           return 'En attente';
+    }
+  };
+
+  // Stats simples
   const stats = {
     total: requests.length,
-    pending: requests.filter(r => r.status === 'pending').length,
-    inProgress: requests.filter(r => r.status === 'in_progress').length,
-    approved: requests.filter(r => r.status === 'approved').length
+    pending: requests.filter((r) => r.status === 'pending').length,
+    inProgress: requests.filter((r) => r.status === 'in_progress').length,
+    approved: requests.filter((r) => r.status === 'approved').length,
+    sent: requests.filter((r) => r.status === 'sent').length,
+    rejected: requests.filter((r) => r.status === 'rejected').length,
   };
 
   return (
@@ -191,15 +207,9 @@ const StudentRequests = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        userData={userData}
       />
 
-      {sidebarOpen && (
-        <div 
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
       <main className={`student-requests-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="student-requests-page-header">
@@ -211,128 +221,101 @@ const StudentRequests = () => {
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <h1 className="student-requests-page-title">Mes Demandes</h1>
-          <div className="student-requests-header-actions">
+          <div className="student-requests-header-actions" style={{ gap: 8 }}>
+            <button className="student-requests-notif-btn" onClick={fetchRequests} title="Rafraîchir">
+              <RotateCw size={18} />
+            </button>
             <button className="student-requests-notif-btn" aria-label="Notifications">
               <Bell size={20} />
-              <span className="notification-badge"></span>
             </button>
           </div>
         </header>
 
         <div className="student-requests-container">
-          {/* Header with New Request Button */}
+          {/* Top bar */}
           <div className="student-requests-top-bar">
             <p className="student-requests-subtitle">Gérez et suivez toutes vos demandes de documents</p>
-            <button
-              className="student-requests-new-btn"
-              onClick={() => setShowNewRequestModal(true)}
-            >
+            <button className="student-requests-new-btn" onClick={() => setShowNewRequestModal(true)}>
               <Plus size={20} />
               <span>Nouvelle demande</span>
             </button>
           </div>
 
-          {/* Stats Cards */}
+          {/* Stats */}
           <div className="student-requests-stats-grid">
             <div className="student-requests-stat-card stat-total">
-              <div className="stat-icon">
-                <FileText size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Total</p>
-                <h3 className="stat-value">{stats.total}</h3>
-              </div>
+              <div className="stat-icon"><FileText size={24} /></div>
+              <div className="stat-info"><p className="stat-label">Total</p><h3 className="stat-value">{stats.total}</h3></div>
             </div>
             <div className="student-requests-stat-card stat-pending">
-              <div className="stat-icon">
-                <AlertCircle size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">En attente</p>
-                <h3 className="stat-value">{stats.pending}</h3>
-              </div>
+              <div className="stat-icon"><AlertCircle size={24} /></div>
+              <div className="stat-info"><p className="stat-label">En attente</p><h3 className="stat-value">{stats.pending}</h3></div>
             </div>
             <div className="student-requests-stat-card stat-progress">
-              <div className="stat-icon">
-                <Clock size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">En cours</p>
-                <h3 className="stat-value">{stats.inProgress}</h3>
-              </div>
+              <div className="stat-icon"><Clock size={24} /></div>
+              <div className="stat-info"><p className="stat-label">En cours</p><h3 className="stat-value">{stats.inProgress}</h3></div>
             </div>
             <div className="student-requests-stat-card stat-approved">
-              <div className="stat-icon">
-                <CheckCircle size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Approuvées</p>
-                <h3 className="stat-value">{stats.approved}</h3>
-              </div>
+              <div className="stat-icon"><CheckCircle size={24} /></div>
+              <div className="stat-info"><p className="stat-label">Approuvées</p><h3 className="stat-value">{stats.approved}</h3></div>
+            </div>
+            <div className="student-requests-stat-card stat-sent">
+              <div className="stat-icon"><Send size={24} /></div>
+              <div className="stat-info"><p className="stat-label">Envoyées</p><h3 className="stat-value">{stats.sent}</h3></div>
+            </div>
+            <div className="student-requests-stat-card stat-rejected">
+              <div className="stat-icon"><XCircle size={24} /></div>
+              <div className="stat-info"><p className="stat-label">Rejetées</p><h3 className="stat-value">{stats.rejected}</h3></div>
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="student-requests-filters">
-            <CustomDropdown
-              options={filterOptions}
-              value={filterStatus}
-              onChange={setFilterStatus}
-              icon={Filter}
-            />
-            <div className="student-requests-search">
-              <Search size={18} />
-              <input
-                type="text"
-                placeholder="Rechercher par document ou numéro..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="student-requests-search-input"
-              />
+          {/* Erreur */}
+          {err && (
+            <div style={{ color: '#ef4444', margin: '10px 0 16px', fontWeight: 600 }}>
+              {err} <button onClick={fetchRequests} style={{ marginLeft: 8 }}>Réessayer</button>
             </div>
-          </div>
-          {/* Requests Grid */}
+          )}
+
+          {/* Grille des demandes */}
           <div className="student-requests-grid">
-            {filteredRequests.length === 0 ? (
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="student-requests-card" style={{ opacity: 0.6 }}>
+                  <div className="request-card-header">
+                    <div className="request-icon" />
+                    <div className="request-badges">
+                      <span className="status-badge" style={{ opacity: 0.5 }}>Chargement…</span>
+                    </div>
+                  </div>
+                  <div className="request-card-body">
+                    <div style={{ height: 16, background: '#1f2a3a', borderRadius: 6, width: '60%' }} />
+                    <div style={{ height: 12, background: '#1f2a3a', borderRadius: 6, width: '70%', marginTop: 8 }} />
+                  </div>
+                </div>
+              ))
+            ) : requests.length === 0 ? (
               <div className="student-requests-empty">
                 <FileText size={64} />
                 <h3>Aucune demande trouvée</h3>
-                <p>
-                  {searchTerm || filterStatus
-                    ? "Essayez de modifier vos critères de recherche"
-                    : "Vous n'avez pas encore fait de demande"}
-                </p>
-                {!searchTerm && !filterStatus && (
-                  <button
-                    className="student-requests-empty-btn"
-                    onClick={() => setShowNewRequestModal(true)}
-                  >
-                    <Plus size={20} />
-                    Faire une demande
-                  </button>
-                )}
+                <p>Vous n'avez pas encore fait de demande</p>
+                <button className="student-requests-empty-btn" onClick={() => setShowNewRequestModal(true)}>
+                  <Plus size={20} />
+                  Faire une demande
+                </button>
               </div>
             ) : (
-              filteredRequests.map(request => {
+              requests.map((request) => {
                 const StatusIcon = getStatusIcon(request.status);
                 return (
                   <div key={request.id} className="student-requests-card">
                     <div className="request-card-header">
-                      <div className="request-icon">
-                        <FileText size={20} />
-                      </div>
+                      <div className="request-icon"><FileText size={20} /></div>
                       <div className="request-badges">
-                        {request.urgency === 'urgent' && (
-                          <span className="urgency-badge">
-                            <AlertCircle size={14} />
-                            Urgent
-                          </span>
-                        )}
-                        <span 
+                        <span
                           className="status-badge"
                           style={{
                             background: `${getStatusColor(request.status)}1a`,
-                            color: getStatusColor(request.status)
+                            color: getStatusColor(request.status),
                           }}
                         >
                           <StatusIcon size={16} />
@@ -340,19 +323,27 @@ const StudentRequests = () => {
                         </span>
                       </div>
                     </div>
+
                     <div className="request-card-body">
                       <h3 className="request-title">{request.documentType}</h3>
-                      <p className="request-tracking">#{request.trackingNumber}</p>
+                      {/* ⬇️ Ligne "tracking number" supprimée */}
+
                       <div className="request-meta">
+                        {/* Date d’envoi de la demande */}
                         <div className="request-meta-item">
                           <Calendar size={14} />
                           <span>{request.requestDate}</span>
                         </div>
-                        <div className="request-meta-item">
-                          <FileText size={14} />
-                          <span>{request.reason}</span>
-                        </div>
+
+                        {/* Motif / note de la demande */}
+                        {request.reason && (
+                          <div className="request-meta-item">
+                            <FileText size={14} />
+                            <span>{request.reason}</span>
+                          </div>
+                        )}
                       </div>
+
                       {request.status === 'rejected' && request.rejectionReason && (
                         <div className="rejection-notice">
                           <AlertCircle size={16} />
@@ -360,25 +351,20 @@ const StudentRequests = () => {
                         </div>
                       )}
                     </div>
+
                     <div className="request-card-footer">
                       <button
                         className="request-action-btn view"
-                        onClick={() => { 
-                          setActiveRequest(request); 
-                          setShowDetailsModal(true); 
+                        onClick={() => {
+                          setActiveRequest(request);
+                          setShowDetailsModal(true);
                         }}
                       >
                         <Eye size={16} />
                         <span>Détails</span>
                       </button>
-                      {request.status === 'approved' && request.downloadUrl && (
-                        <a
-                          href={request.downloadUrl}
-                          
-                          download
-                        >                    
-                        </a>
-                      )}
+
+                      {/* ⬇️ Pas de bouton Télécharger ici */}
                     </div>
                   </div>
                 );
@@ -388,71 +374,45 @@ const StudentRequests = () => {
         </div>
       </main>
 
-      {/* Details Modal */}
+      {/* Détails */}
       {showDetailsModal && activeRequest && (
         <div className="student-requests-modal-backdrop">
           <div className="student-requests-modal">
-            <button
-              className="student-requests-modal-close"
-              onClick={() => setShowDetailsModal(false)}
-            >
+            <button className="student-requests-modal-close" onClick={() => setShowDetailsModal(false)}>
               <X size={22} />
             </button>
-            <h3 className="student-requests-modal-title">
-              <FileText size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#5eead4"}} />
-              Détail de la demande
-            </h3>
+            <h3 className="student-requests-modal-title">Détail de la demande</h3>
             <div className="student-requests-modal-fields">
-              <div className="modal-field">
-                <strong>Document :</strong>
-                <span>{activeRequest.documentType}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Numéro de suivi :</strong>
-                <span>{activeRequest.trackingNumber}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Date :</strong>
-                <span>{activeRequest.requestDate}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Motif :</strong>
-                <span>{activeRequest.reason}</span>
-              </div>
+              <div className="modal-field"><strong>Document :</strong><span>{activeRequest.documentType}</span></div>
+              <div className="modal-field"><strong>Date d’envoi :</strong><span>{activeRequest.requestDate}</span></div>
+              {activeRequest.reason && (
+                <div className="modal-field"><strong>Motif :</strong><span>{activeRequest.reason}</span></div>
+              )}
               <div className="modal-field">
                 <strong>Statut :</strong>
-                <span style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: '999px',
-                  background: `${getStatusColor(activeRequest.status)}1a`,
-                  color: getStatusColor(activeRequest.status),
-                  fontWeight: 600,
-                  display: 'inline-block'
-                }}>
+                <span
+                  style={{
+                    padding: '0.3rem 0.8rem',
+                    borderRadius: '999px',
+                    background: `${getStatusColor(activeRequest.status)}1a`,
+                    color: getStatusColor(activeRequest.status),
+                    fontWeight: 600,
+                    display: 'inline-block',
+                  }}
+                >
                   {getStatusText(activeRequest.status)}
                 </span>
               </div>
               {activeRequest.rejectionReason && (
                 <div className="modal-field">
-                  <strong style={{color: '#ef4444'}}>Motif du rejet :</strong>
-                  <span style={{color: '#ef4444'}}>{activeRequest.rejectionReason}</span>
+                  <strong style={{ color: '#ef4444' }}>Motif du rejet :</strong>
+                  <span style={{ color: '#ef4444' }}>{activeRequest.rejectionReason}</span>
                 </div>
               )}
             </div>
             <div className="student-requests-modal-footer">
-              {activeRequest.downloadUrl && activeRequest.status === 'approved' && (
-                <a
-                  href={activeRequest.downloadUrl}
-                  className="student-requests-download-btn"
-                  download
-                >
-                  <Download size={18} /> Télécharger
-                </a>
-              )}
-              <button 
-                className="student-requests-close-btn" 
-                onClick={() => setShowDetailsModal(false)}
-              >
+              {/* ⬇️ Pas de bouton Télécharger dans la modale non plus */}
+              <button className="student-requests-close-btn" onClick={() => setShowDetailsModal(false)}>
                 Fermer
               </button>
             </div>
@@ -460,18 +420,15 @@ const StudentRequests = () => {
         </div>
       )}
 
-      {/* New Request Modal */}
+      {/* Nouvelle demande */}
       {showNewRequestModal && (
         <div className="student-requests-modal-backdrop">
           <div className="student-requests-modal">
-            <button 
-              className="student-requests-modal-close"
-              onClick={() => setShowNewRequestModal(false)}
-            >
+            <button className="student-requests-modal-close" onClick={() => setShowNewRequestModal(false)}>
               <X size={22} />
             </button>
             <h3 className="student-requests-modal-title">
-              <Plus size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#5eead4"}} />
+              <Plus size={18} style={{ verticalAlign: 'middle', marginRight: 8, color: '#5eead4' }} />
               Nouvelle demande de document
             </h3>
             <form onSubmit={handleNewRequest} className="student-requests-form">
@@ -485,10 +442,27 @@ const StudentRequests = () => {
                 >
                   <option value="">Sélectionnez un type de document</option>
                   {documentTypes.map((type, index) => (
-                    <option key={index} value={type}>{type}</option>
+                    <option key={index} value={type}>
+                      {type === OTHER_SENTINEL ? 'Autre (préciser)' : type}
+                    </option>
                   ))}
                 </select>
               </div>
+
+              {selectedDocumentType === OTHER_SENTINEL && (
+                <div className="form-group">
+                  <label className="form-label">Précisez le type *</label>
+                  <input
+                    type="text"
+                    value={customDocumentType}
+                    onChange={(e) => setCustomDocumentType(e.target.value)}
+                    className="form-input"
+                    placeholder="Ex : Attestation de bourse, Certificat spécifique..."
+                    required
+                  />
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label">Motif de la demande *</label>
                 <textarea
@@ -500,42 +474,19 @@ const StudentRequests = () => {
                   required
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">Urgence</label>
-                <div className="radio-group">
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="urgency"
-                      value="normal"
-                      checked={urgency === 'normal'}
-                      onChange={(e) => setUrgency(e.target.value)}
-                    />
-                    <span>Normal (5-7 jours)</span>
-                  </label>
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="urgency"
-                      value="urgent"
-                      checked={urgency === 'urgent'}
-                      onChange={(e) => setUrgency(e.target.value)}
-                    />
-                    <span>Urgent (2-3 jours)</span>
-                  </label>
-                </div>
-              </div>
+
               <div className="student-requests-modal-footer">
                 <button
                   type="button"
                   className="student-requests-cancel-btn"
                   onClick={() => setShowNewRequestModal(false)}
+                  disabled={creating}
                 >
                   Annuler
                 </button>
-                <button type="submit" className="student-requests-submit-btn">
+                <button type="submit" disabled={creating} className="student-requests-submit-btn">
                   <Send size={18} />
-                  Envoyer
+                  {creating ? 'Envoi…' : 'Envoyer'}
                 </button>
               </div>
             </form>
@@ -547,4 +498,3 @@ const StudentRequests = () => {
 };
 
 export default StudentRequests;
-

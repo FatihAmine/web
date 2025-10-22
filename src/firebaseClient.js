@@ -5,8 +5,8 @@ import {
   setPersistence,
   browserLocalPersistence,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut
+  signInWithEmailAndPassword as _signInWithEmailAndPassword,
+  signOut as _signOut,
 } from 'firebase/auth';
 import {
   getMessaging,
@@ -19,12 +19,30 @@ import { FIREBASE_CONFIG, VAPID_PUBLIC_KEY } from './config/appConfig';
 export const app = initializeApp(FIREBASE_CONFIG);
 export const auth = getAuth(app);
 
-// 🔐 Persistance locale -> l’utilisateur reste connecté après F5
+// 🔐 rester connecté après F5
 setPersistence(auth, browserLocalPersistence);
 
-export { onAuthStateChanged, signInWithEmailAndPassword, signOut };
+// ✅ promesse qui se résout au **premier** onAuthStateChanged (réhydratation)
+let _resolved = false;
+let _resolveInit;
+const _authInit = new Promise((res) => { _resolveInit = res; });
 
-// --- FCM utils ---
+onAuthStateChanged(auth, () => {
+  if (!_resolved) {
+    _resolved = true;
+    _resolveInit(true);
+  }
+});
+
+// à utiliser partout où tu dois attendre l’hydratation
+export const waitForAuthInit = () => _authInit;
+
+// helpers login/logout
+export const signInWithEmailAndPassword = (auth, email, password) =>
+  _signInWithEmailAndPassword(auth, email, password);
+export const signOut = () => _signOut(auth);
+
+// --- FCM utils (inchangé) ---
 export async function setupFCM() {
   const supported = await isSupported();
   if (!supported) return { supported: false, token: null };
@@ -32,9 +50,7 @@ export async function setupFCM() {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') return { supported: true, token: null };
 
-  // Enregistrer explicitement le SW (public/firebase-messaging-sw.js)
   const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-
   const messaging = getMessaging(app);
   const token = await getToken(messaging, {
     vapidKey: VAPID_PUBLIC_KEY,

@@ -1,163 +1,176 @@
-import React, { useState } from 'react';
+// src/pages/personnel/DocumentPersonnel.jsx
+import React, { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../../component/sidebarpersonnel';
-import CustomDropdown from '../../component/CustomDropdown';
 import {
-  Bell,
-  FileText,
-  Menu,
-  X,
-  Search,
-  Filter,
-  Check,
-  X as XIcon,
-  Calendar,
-  User,
-  Clock,
-  Upload,
-  AlertCircle
+  Bell, FileText, Menu, X, Search, Filter,
+  Check, X as XIcon, Calendar, User, Clock,
+  Upload, AlertCircle, Send, Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/personnel/DocumentPersonnel.css';
+import api from '../../../api';
+
+function toDateAny(v) {
+  if (!v) return new Date();
+  if (v instanceof Date) return v;
+  if (typeof v === 'string' || typeof v === 'number') return new Date(v);
+  if (v?._seconds) return new Date(v._seconds * 1000);
+  if (v?.seconds) return new Date(v.seconds * 1000);
+  return new Date(v);
+}
+function formatDateISO(d) {
+  const dt = toDateAny(d);
+  return isNaN(+dt) ? '' : dt.toISOString().slice(0, 10);
+}
+const nameOf = (obj) =>
+  obj?.displayName ||
+  [obj?.prenom, obj?.nom].filter(Boolean).join(' ') ||
+  obj?.email ||
+  '—';
 
 const DocumentPersonnel = () => {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? JSON.parse(saved) : true;
   });
-
   const [activeTab, setActiveTab] = useState('documents');
+
+  // data
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  // search / filter
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState(null);
+
+  // modal send
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [selectedReq, setSelectedReq] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('');
   const [notes, setNotes] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
   const navigate = useNavigate();
+  const handleLogout = () => navigate('/personnel/login');
 
-  const userData = {
-    firstName: "Karim",
-    lastName: "El Amrani",
-    role: "Personnel Administratif",
-    profilePic: "https://ui-avatars.com/api/?name=Karim+El+Amrani&background=17766e&color=fff&size=200"
-  };
+  // load approved + sent from backend
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true); setErr('');
+      try {
+        const { data } = await api.get('/requests', { params: { scope: 'admin', limit: 100 } });
+        if (!mounted) return;
+        setRequests(Array.isArray(data?.items) ? data.items : []);
+      } catch (e) {
+        if (mounted) setErr("Impossible de charger les demandes.");
+        console.error(e?.response?.data || e.message);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
-  const [documents, setDocuments] = useState([
-    { id: 1, studentName: "Ahmed Bennani", type: "Attestation", name: "Attestation de Scolarité", date: "2025-10-03", status: "approved" },
-    { id: 2, studentName: "Sara Idrissi", type: "Bulletin", name: "Bulletin S1 2024", date: "2025-09-29", status: "pending" },
-    { id: 3, studentName: "Omar Tazi", type: "Certificat", name: "Certificat de Réussite", date: "2025-09-27", status: "approved" },
-    { id: 4, studentName: "Leila Fassi", type: "Convention", name: "Convention de Stage", date: "2025-09-25", status: "rejected" },
-    { id: 5, studentName: "Youssef Alaoui", type: "Relevé de Notes", name: "Relevé de Notes S2", date: "2025-09-20", status: "pending" },
-    { id: 6, studentName: "Amina Rachid", type: "Attestation", name: "Attestation de Stage", date: "2025-09-18", status: "approved" }
-  ]);
+  const filterOptions = useMemo(() => {
+    const set = new Set();
+    requests.forEach(r => r?.type && set.add(String(r.type)));
+    return [
+      { value: '', label: 'Tous les types', icon: Filter, color: '#5eead4' },
+      ...Array.from(set).sort().map(t => ({ value: t, label: t }))
+    ];
+  }, [requests]);
 
-  const filterOptions = [
-    { value: '', label: 'Tous les types', icon: Filter, color: '#5eead4' },
-    { value: 'Attestation', label: 'Attestation', icon: FileText, color: '#10b981' },
-    { value: 'Bulletin', label: 'Bulletin', icon: FileText, color: '#3b82f6' },
-    { value: 'Certificat', label: 'Certificat', icon: FileText, color: '#8b5cf6' },
-    { value: 'Convention', label: 'Convention', icon: FileText, color: '#f59e0b' },
-    { value: 'Relevé de Notes', label: 'Relevé de Notes', icon: FileText, color: '#ec4899' }
-  ];
+  const getStatusIcon  = (s) => (s === 'approved' ? Check : (s === 'sent' ? Send : Clock));
+  const getStatusColor = (s) => (s === 'approved' ? '#10b981' : (s === 'sent' ? '#3b82f6' : '#6b7280'));
+  const getStatusText  = (s) => (s === 'approved' ? 'Approuvé' : (s === 'sent' ? 'Envoyé' : s));
 
-  const handleLogout = () => {
-    navigate('/personnel/login');
-  };
+  const filtered = requests.filter(r => {
+    const typeOk = !filterType || String(r.type || '').toLowerCase() === filterType.toLowerCase();
+    const hay = [
+      r.type, nameOf(r.requestedFor), nameOf(r.requestedBy), r.notes, r.id
+    ].join(' ').toLowerCase();
+    const q = searchTerm.trim().toLowerCase();
+    return typeOk && (!q || hay.includes(q));
+  });
 
-  const openApprovalModal = (doc) => {
-    setSelectedDoc(doc);
-    setShowApprovalModal(true);
+  const totalDocs    = requests.length;
+  const approvedDocs = requests.filter(r => r.status === 'approved').length;
+  const sentDocs     = requests.filter(r => r.status === 'sent').length;
+
+  // --- Send (upload + notify) ---
+  const openSendModal = (req) => {
+    setSelectedReq(req);
     setUploadedFile(null);
     setNotes('');
+    setShowSendModal(true);
+    setIsUploading(false);
   };
-
-  const openRejectionModal = (doc) => {
-    setSelectedDoc(doc);
-    setShowRejectionModal(true);
-    setRejectionReason('');
-  };
-
   const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setUploadedFile(file);
-    }
+    const f = e.target.files?.[0];
+    if (f) setUploadedFile(f);
   };
-
-  const handleApprove = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!uploadedFile) {
-      alert('Veuillez télécharger le document');
-      return;
-    }
-    
-    setDocuments(documents.map(doc => 
-      doc.id === selectedDoc.id 
-        ? { ...doc, status: 'approved', uploadedFile: uploadedFile.name, notes } 
-        : doc
-    ));
-    
-    setShowApprovalModal(false);
-    setSelectedDoc(null);
-    setUploadedFile(null);
-    setNotes('');
-  };
+    if (!selectedReq) return;
+    try {
+      setIsUploading(true);
+      if (uploadedFile) {
+        const fd = new FormData();
+        fd.append('file', uploadedFile);
+        fd.append('notes', notes || '');
+        fd.append('notify', 'true'); // backend: mark sent + notifications
 
-  const handleReject = (e) => {
-    e.preventDefault();
-    if (!rejectionReason.trim()) {
-      alert('Veuillez indiquer la raison du rejet');
-      return;
-    }
-    
-    setDocuments(documents.map(doc => 
-      doc.id === selectedDoc.id 
-        ? { ...doc, status: 'rejected', rejectionReason } 
-        : doc
-    ));
-    
-    setShowRejectionModal(false);
-    setSelectedDoc(null);
-    setRejectionReason('');
-  };
+        const { data } = await api.post(`/requests/${selectedReq.id}/upload`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
 
-  const getStatusIcon = status => {
-    switch (status) {
-      case 'approved': return Check;
-      case 'pending': return Clock;
-      case 'rejected': return XIcon;
-      default: return Clock;
+        setRequests(prev =>
+          prev.map(r =>
+            r.id === selectedReq.id
+              ? { ...r, status: 'sent', sentAt: new Date().toISOString(), documentUrl: data?.attachment?.secureUrl || r.documentUrl }
+              : r
+          )
+        );
+      } else {
+        await api.patch(`/requests/${selectedReq.id}/document`, { notes: notes || '' });
+        setRequests(prev => prev.map(r => r.id === selectedReq.id ? { ...r, status: 'sent', sentAt: new Date().toISOString() } : r));
+      }
+      setShowSendModal(false);
+      setSelectedReq(null);
+      setUploadedFile(null);
+      setNotes('');
+      alert('Document envoyé.');
+    } catch (e2) {
+      console.error(e2?.response?.data || e2.message);
+      alert("Échec d'envoi du document.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const getStatusColor = status => {
-    switch (status) {
-      case 'approved': return '#10b981';
-      case 'pending': return '#f59e0b';
-      case 'rejected': return '#ef4444';
-      default: return '#6b7280';
+  // --- Download (use backend URL) ---
+  const handleDownload = async (reqItem) => {
+    try {
+      const { data } = await api.get(`/requests/${reqItem.id}/download`);
+      const url = data?.url || reqItem.documentUrl;
+      if (!url) return alert('Fichier introuvable pour cette demande.');
+
+      // essayer un “download” direct si possible
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.download = data?.filename || `${(reqItem.type || 'document').replace(/\s+/g,'_')}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      console.error('download failed', e?.response?.data || e.message);
+      alert('Téléchargement impossible.');
     }
   };
-
-  const getStatusText = status => {
-    switch (status) {
-      case 'approved': return 'Approuvé';
-      case 'pending': return 'En attente';
-      case 'rejected': return 'Rejeté';
-      default: return 'En attente';
-    }
-  };
-
-  const filteredDocs = documents.filter(doc =>
-    (filterType === '' || doc.type === filterType) &&
-    (doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-     doc.studentName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const totalDocs = documents.length;
-  const approvedDocs = documents.filter(d => d.status === 'approved').length;
-  const pendingDocs = documents.filter(d => d.status === 'pending').length;
 
   return (
     <div className="personnel-docs-page">
@@ -167,21 +180,16 @@ const DocumentPersonnel = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        userData={userData}
       />
 
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
       <main className={`personnel-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="personnel-header">
-          <button 
-            className="personnel-toggle-sidebar-btn mobile-menu-btn"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Toggle Sidebar"
-          >
+          <button className="personnel-toggle-sidebar-btn mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle Sidebar">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h1 className="personnel-page-title">Gestion Documents</h1>
+          <h1 className="personnel-page-title">Gestion Documents (Personnel)</h1>
           <div className="personnel-header-actions">
             <button className="personnel-notif-btn" aria-label="Notifications">
               <Bell size={20} />
@@ -191,106 +199,114 @@ const DocumentPersonnel = () => {
         </header>
 
         <div className="personnel-docs-content">
-          {/* Stats Cards */}
+          {/* Stats */}
           <div className="personnel-docs-stats-grid">
             <div className="personnel-docs-stat-card stat-total">
               <div className="stat-icon"><FileText size={24} /></div>
-              <div className="stat-info">
-                <p className="stat-label">Total Documents</p>
-                <h3 className="stat-value">{totalDocs}</h3>
-              </div>
+              <div className="stat-info"><p className="stat-label">Total (approuvés & envoyés)</p><h3 className="stat-value">{totalDocs}</h3></div>
             </div>
             <div className="personnel-docs-stat-card stat-approved">
               <div className="stat-icon"><Check size={24} /></div>
-              <div className="stat-info">
-                <p className="stat-label">Approuvés</p>
-                <h3 className="stat-value">{approvedDocs}</h3>
-              </div>
+              <div className="stat-info"><p className="stat-label">Approuvés</p><h3 className="stat-value">{approvedDocs}</h3></div>
             </div>
             <div className="personnel-docs-stat-card stat-pending">
-              <div className="stat-icon"><Clock size={24} /></div>
-              <div className="stat-info">
-                <p className="stat-label">En Attente</p>
-                <h3 className="stat-value">{pendingDocs}</h3>
-              </div>
+              <div className="stat-icon"><Send size={24} /></div>
+              <div className="stat-info"><p className="stat-label">Envoyés</p><h3 className="stat-value">{sentDocs}</h3></div>
             </div>
           </div>
 
           {/* Toolbar */}
           <div className="personnel-docs-toolbar">
-            <CustomDropdown
-              options={filterOptions}
-              value={filterType}
-              onChange={setFilterType}
-              icon={Filter}
-            />
-            <div className="personnel-docs-searchrow">
-              <Search size={18} />
-              <input
-                type="text"
-                placeholder="Rechercher documents..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+            <div className="personnel-docs-searchrow" style={{ gap: 12 }}>
+              <select
                 className="personnel-docs-search-input"
-              />
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                style={{ maxWidth: 260 }}
+              >
+                <option value="">Tous les types</option>
+                {filterOptions.slice(1).map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+
+              <div className="personnel-docs-searchrow">
+                <Search size={18} />
+                <input
+                  type="text"
+                  placeholder="Rechercher (type / étudiant / demandeur / id)…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="personnel-docs-search-input"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Documents Grid */}
+          {/* Grid */}
           <div className="personnel-docs-grid">
-            {filteredDocs.length === 0 ? (
+            {loading ? (
+              <div className="personnel-docs-empty-state">
+                <Clock size={64} />
+                <h3>Chargement…</h3>
+              </div>
+            ) : err ? (
+              <div className="personnel-docs-empty-state">
+                <AlertCircle size={64} />
+                <h3>{err}</h3>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="personnel-docs-empty-state">
                 <FileText size={64} />
-                <h3>Aucun document trouvé</h3>
-                <p>Essayez de modifier vos filtres de recherche</p>
+                <h3>Aucun document</h3>
+                <p>Aucune demande approuvée/envoyée ne correspond à vos filtres.</p>
               </div>
             ) : (
-              filteredDocs.map(doc => {
-                const StatusIcon = getStatusIcon(doc.status);
+              filtered.map((r) => {
+                const StatusIcon = getStatusIcon(r.status);
+                const statusColor = getStatusColor(r.status);
+                const studentName = nameOf(r.requestedFor);
+                const requesterName = nameOf(r.requestedBy);
+                const docTitle = r.type || 'Document';
+                const dateStr = formatDateISO(r.createdAt);
+
                 return (
-                  <div key={doc.id} className="personnel-docs-card">
+                  <div key={r.id} className="personnel-docs-card">
                     <div className="doc-card-header">
                       <div className="doc-icon"><FileText size={20} /></div>
-                      <span 
-                        className="doc-status"
-                        style={{
-                          background: `${getStatusColor(doc.status)}1a`,
-                          color: getStatusColor(doc.status)
-                        }}
-                      >
-                        <StatusIcon size={16} />
-                        {getStatusText(doc.status)}
+                      <span className="doc-status" style={{ background: `${statusColor}1a`, color: statusColor }}>
+                        <StatusIcon size={16} /> {getStatusText(r.status)}
                       </span>
                     </div>
 
                     <div className="doc-card-body">
-                      <h3 className="doc-title">{doc.name}</h3>
+                      <h3 className="doc-title">{docTitle}</h3>
                       <div className="doc-meta">
-                        <div className="doc-meta-item"><User size={14} /><span>{doc.studentName}</span></div>
-                        <div className="doc-meta-item"><Calendar size={14} /><span>{doc.date}</span></div>
+                        <div className="doc-meta-item"><User size={14} /><span>Pour : {studentName}</span></div>
+                        <div className="doc-meta-item"><User size={14} /><span>Par : {requesterName}</span></div>
+                        <div className="doc-meta-item"><Calendar size={14} /><span>{dateStr}</span></div>
                       </div>
-                      <div className="doc-type-badge">
-                        <span className={`doc-type ${doc.type.toLowerCase().replace(/\s+/g, '-')}`}>{doc.type}</span>
-                      </div>
+                      {r.notes && (
+                        <div className="doc-type-badge" title="Motif / notes">
+                          <span className="doc-type">{r.notes}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="doc-card-footer">
-                      <button 
-                        className="doc-action-btn approve"
-                        onClick={() => openApprovalModal(doc)}
-                        disabled={doc.status === 'approved'}
-                      >
-                        <Check size={16} />
-                        <span>Approuver</span>
-                      </button>
-                      <button 
-                        className="doc-action-btn reject"
-                        onClick={() => openRejectionModal(doc)}
-                        disabled={doc.status === 'rejected'}
-                      >
-                        <XIcon size={16} />
-                        <span>Refuser</span>
-                      </button>
+                      {r.status === 'approved' && (
+                        <button className="doc-action-btn approve" onClick={() => openSendModal(r)} disabled={isUploading}>
+                          <Send size={16} />
+                          <span>Envoyer le document</span>
+                        </button>
+                      )}
+
+                      {(r.status === 'sent' || r.documentUrl) && (
+                        <button className="doc-action-btn approve" onClick={() => handleDownload(r)}>
+                          <Download size={16} />
+                          <span>Télécharger</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -300,139 +316,64 @@ const DocumentPersonnel = () => {
         </div>
       </main>
 
-      {/* Approval Modal */}
-      {showApprovalModal && selectedDoc && (
+      {/* Modal ENVOI */}
+      {showSendModal && selectedReq && (
         <div className="personnel-modal-backdrop">
           <div className="personnel-modal">
-            <button 
-              className="personnel-modal-close"
-              onClick={() => setShowApprovalModal(false)}
-            >
+            <button className="personnel-modal-close" onClick={() => setShowSendModal(false)} disabled={isUploading}>
               <X size={22} />
             </button>
             <h3 className="personnel-modal-title">
-              <Check size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#10b981"}} />
-              Approuver le document
+              <Send size={18} style={{ verticalAlign: 'middle', marginRight: 8, color: '#3b82f6' }}/>
+              Envoyer le document
             </h3>
-            
-            <form onSubmit={handleApprove} className="personnel-modal-form">
+
+            <form onSubmit={handleSend} className="personnel-modal-form">
               <div className="modal-info-section">
-                <div className="modal-field">
-                  <strong>Étudiant :</strong>
-                  <span>{selectedDoc.studentName}</span>
-                </div>
-                <div className="modal-field">
-                  <strong>Document :</strong>
-                  <span>{selectedDoc.name}</span>
-                </div>
-                <div className="modal-field">
-                  <strong>Type :</strong>
-                  <span>{selectedDoc.type}</span>
-                </div>
-                <div className="modal-field">
-                  <strong>Date de demande :</strong>
-                  <span>{selectedDoc.date}</span>
-                </div>
+                <div className="modal-field"><strong>Document :</strong><span>{selectedReq.type || 'Document'}</span></div>
+                <div className="modal-field"><strong>Étudiant :</strong><span>{nameOf(selectedReq.requestedFor)}</span></div>
+                <div className="modal-field"><strong>Demandeur :</strong><span>{nameOf(selectedReq.requestedBy)}</span></div>
+                <div className="modal-field"><strong>Créée le :</strong><span>{formatDateISO(selectedReq.createdAt)}</span></div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Télécharger le document signé *</label>
+                <label className="form-label">Télécharger le fichier (PDF/DOC/DOCX)</label>
                 <div className="file-upload-area">
                   <input
                     type="file"
-                    id="file-upload"
+                    id="personnel-file-upload"
                     accept=".pdf,.doc,.docx"
                     onChange={handleFileUpload}
                     className="file-input"
-                    required
+                    disabled={isUploading}
                   />
-                  <label htmlFor="file-upload" className="file-upload-label">
+                  <label htmlFor="personnel-file-upload" className="file-upload-label">
                     <Upload size={24} />
-                    <span>{uploadedFile ? uploadedFile.name : 'Cliquer pour télécharger'}</span>
+                    <span>{uploadedFile ? uploadedFile.name : 'Cliquer pour sélectionner'}</span>
                     <small>PDF, DOC, DOCX (Max 10MB)</small>
                   </label>
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Notes (optionnel)</label>
+                <label className="form-label">Message / Notes (affiché dans la notif)</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="form-textarea"
-                  placeholder="Ajouter des notes..."
+                  placeholder="Ex: Document disponible au téléchargement dans votre espace."
                   rows="3"
+                  disabled={isUploading}
                 />
               </div>
 
               <div className="personnel-modal-footer">
-                <button
-                  type="button"
-                  className="personnel-cancel-btn"
-                  onClick={() => setShowApprovalModal(false)}
-                >
+                <button type="button" className="personnel-cancel-btn" onClick={() => setShowSendModal(false)} disabled={isUploading}>
                   Annuler
                 </button>
-                <button type="submit" className="personnel-submit-btn approve">
-                  <Check size={18} />
-                  Approuver et envoyer
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Rejection Modal */}
-      {showRejectionModal && selectedDoc && (
-        <div className="personnel-modal-backdrop">
-          <div className="personnel-modal">
-            <button 
-              className="personnel-modal-close"
-              onClick={() => setShowRejectionModal(false)}
-            >
-              <X size={22} />
-            </button>
-            <h3 className="personnel-modal-title">
-              <AlertCircle size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#ef4444"}} />
-              Refuser le document
-            </h3>
-            
-            <form onSubmit={handleReject} className="personnel-modal-form">
-              <div className="modal-info-section">
-                <div className="modal-field">
-                  <strong>Étudiant :</strong>
-                  <span>{selectedDoc.studentName}</span>
-                </div>
-                <div className="modal-field">
-                  <strong>Document :</strong>
-                  <span>{selectedDoc.name}</span>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Raison du rejet *</label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  className="form-textarea"
-                  placeholder="Veuillez indiquer la raison du rejet..."
-                  rows="4"
-                  required
-                />
-              </div>
-
-              <div className="personnel-modal-footer">
-                <button
-                  type="button"
-                  className="personnel-cancel-btn"
-                  onClick={() => setShowRejectionModal(false)}
-                >
-                  Annuler
-                </button>
-                <button type="submit" className="personnel-submit-btn reject">
-                  <XIcon size={18} />
-                  Confirmer le rejet
+                <button type="submit" className="personnel-submit-btn approve" disabled={isUploading}>
+                  <Send size={18} />
+                  {isUploading ? 'Envoi…' : (uploadedFile ? 'Uploader et notifier' : 'Notifier sans fichier')}
                 </button>
               </div>
             </form>

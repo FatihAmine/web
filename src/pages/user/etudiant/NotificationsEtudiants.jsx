@@ -1,145 +1,121 @@
-import React, { useState } from 'react';
+// src/pages/etudiant/NotificationEtudiant.jsx
+import React, { useEffect, useState } from 'react';
 import Sidebar from '../../component/sidebaretudiant';
-import CustomDropdown from '../../component/CustomDropdown';
-import {
-  Bell,
-  Menu,
-  X,
-  Eye,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Info,
-  Clock,
-  Trash2,
-  Filter
-} from 'lucide-react';
+import { Bell, Menu, X, CheckCircle, XCircle, FileText, Clock, RotateCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/etudiant/NotificationsEtudiants.css';
+import api from '../../../api'; // ✅ axios avec ID token
+
+/* Utils dates (ISO / Date / Firestore Timestamp) */
+function toDateAny(v) {
+  if (!v) return new Date();
+  if (v instanceof Date) return v;
+  if (typeof v === 'string' || typeof v === 'number') return new Date(v);
+  if (v?._seconds) return new Date(v._seconds * 1000);
+  if (v?.seconds) return new Date(v.seconds * 1000);
+  return new Date(v);
+}
+function formatTimeAgo(value) {
+  const ts = toDateAny(value);
+  const diffMs = Date.now() - ts.getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const d = Math.floor(h / 24);
+  return `il y a ${d} j`;
+}
+
+/** Normalise l’enveloppe renvoyée par le backend */
+const normalizeList = (data) => {
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.notifications)) return data.notifications;
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data)) return data;
+  return [];
+};
+
+/** Map → format UI étudiant (on ne garde que approved / rejected / document_sent) */
+function mapStudentNotif(n) {
+  const kind = String(n.kind || '').toLowerCase();
+
+  // On ne montre pas request_submitted côté étudiant
+  if (!['request_approved', 'request_rejected', 'document_sent'].includes(kind)) {
+    return null;
+  }
+
+  // champs communs
+  const base = {
+    id: n.id || n.notifId || n.requestId || Math.random().toString(36).slice(2),
+    type: n.type || 'Document',
+    notes: n.notes || '',
+    rejectionReason: n.rejectionReason || '',
+    createdAt: n.createdAt || n.approvedAt || n.rejectedAt || new Date(),
+  };
+
+  if (kind === 'request_approved') {
+    return { ...base, status: 'approved', title: 'Demande approuvée' };
+  }
+  if (kind === 'request_rejected') {
+    return { ...base, status: 'rejected', title: 'Demande rejetée' };
+  }
+  // document_sent
+  return { ...base, status: 'sent', title: 'Document envoyé' };
+}
+
+/** Icône + couleur selon statut */
+function iconFor(status) {
+  if (status === 'approved') return { Icon: CheckCircle, color: '#10b981' };
+  if (status === 'rejected') return { Icon: XCircle, color: '#ef4444' };
+  return { Icon: FileText, color: '#3b82f6' }; // sent
+}
 
 const NotificationEtudiant = () => {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  
   const [activeTab, setActiveTab] = useState('notifications');
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [activeNotification, setActiveNotification] = useState(null);
-  const [filterType, setFilterType] = useState('');
+
+  const [items, setItems] = useState([]);     // notifications UI
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   const navigate = useNavigate();
+  const handleLogout = () => navigate('/etudiant/login');
 
-  const userData = {
-    firstName: "Mohamed",
-    lastName: "Alami",
-    role: "Étudiant",
-    profilePic: "https://ui-avatars.com/api/?name=Mohamed+Alami&background=17766e&color=fff&size=200"
-  };
-
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Demande approuvée",
-      message: "Votre demande d'Attestation de Scolarité a été approuvée.",
-      date: "2025-10-15 11:10",
-      type: "success",
-      seen: false
-    },
-    {
-      id: 2,
-      title: "Document téléversé",
-      message: "Votre bulletin semestriel a été téléversé et est en cours de traitement.",
-      date: "2025-10-13 18:40",
-      type: "info",
-      seen: true
-    },
-    {
-      id: 3,
-      title: "Demande rejetée",
-      message: "Convention de Stage rejetée : documents incomplets, veuillez compléter votre dossier.",
-      date: "2025-10-11 09:30",
-      type: "error",
-      seen: false
-    },
-    {
-      id: 4,
-      title: "Rappel important",
-      message: "N'oubliez pas de uploader l'attestation d'assurance étudiante avant le 20/10/2025.",
-      date: "2025-10-10 15:09",
-      type: "warning",
-      seen: false
-    },
-    {
-      id: 5,
-      title: "Nouveau message",
-      message: "Le personnel administratif vous a envoyé un message concernant votre dossier.",
-      date: "2025-10-09 14:20",
-      type: "info",
-      seen: true
-    }
-  ]);
-
-  const filterOptions = [
-    { value: '', label: 'Tous les types', icon: Filter, color: '#5eead4' },
-    { value: 'success', label: 'Succès', icon: CheckCircle, color: '#10b981' },
-    { value: 'info', label: 'Information', icon: Info, color: '#3b82f6' },
-    { value: 'warning', label: 'Avertissement', icon: AlertCircle, color: '#f59e0b' },
-    { value: 'error', label: 'Erreur', icon: XCircle, color: '#ef4444' }
-  ];
-
-  const handleLogout = () => {
-    navigate('/etudiant/login');
-  };
-
-  const handleDelete = (id) => {
-    setNotifications(notifications.filter(n => n.id !== id));
-  };
-
-  const handleMarkAsRead = (id) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, seen: true } : n
-    ));
-  };
-
-  const getTypeIcon = type => {
-    switch (type) {
-      case 'success': return CheckCircle;
-      case 'error': return XCircle;
-      case 'info': return Info;
-      case 'warning': return AlertCircle;
-      default: return Bell;
+  const fetchMine = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      // feed personnel de l’utilisateur (uid) → scope=mine
+      const { data } = await api.get('/notifications', { params: { scope: 'mine', limit: 100 } });
+      const mapped = normalizeList(data)
+        .map(mapStudentNotif)
+        .filter(Boolean) // ne garde que les 3 types souhaités
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setItems(mapped);
+    } catch (e) {
+      console.error('STUDENT NOTIFS ERR', e?.response?.data || e.message);
+      const msg =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        'Impossible de charger les notifications.';
+      setError(msg);
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getTypeColor = type => {
-    switch (type) {
-      case 'success': return '#10b981';
-      case 'error': return '#ef4444';
-      case 'info': return '#3b82f6';
-      case 'warning': return '#f59e0b';
-      default: return '#6b7280';
-    }
-  };
+  useEffect(() => {
+    fetchMine();
+  }, []);
 
-  const getTypeLabel = (type) => {
-    switch (type) {
-      case 'success': return 'Succès';
-      case 'info': return 'Information';
-      case 'error': return 'Erreur';
-      case 'warning': return 'Avertissement';
-      default: return 'Notification';
-    }
-  };
-
-  const filteredNotifications = notifications.filter(n => 
-    filterType === '' || n.type === filterType
-  );
-
-  // Stats
-  const totalNotifs = notifications.length;
-  const unreadNotifs = notifications.filter(n => !n.seen).length;
-  const successNotifs = notifications.filter(n => n.type === 'success').length;
-  const warningNotifs = notifications.filter(n => n.type === 'warning').length;
+  const refresh = () => fetchMine();
 
   return (
     <div className="notification-page">
@@ -149,15 +125,10 @@ const NotificationEtudiant = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        userData={userData}
+        // pas de userData en dur
       />
 
-      {sidebarOpen && (
-        <div 
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
       <main className={`notification-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="notification-page-header">
@@ -170,186 +141,87 @@ const NotificationEtudiant = () => {
           </button>
           <h1 className="notification-page-title">Notifications</h1>
           <div className="notification-header-actions">
+            <button className="notification-notif-btn" onClick={refresh} title="Rafraîchir">
+              <RotateCw size={18} />
+            </button>
             <button className="notification-notif-btn" aria-label="Notifications">
               <Bell size={20} />
-              {unreadNotifs > 0 && <span className="notification-badge"></span>}
             </button>
           </div>
         </header>
 
         <div className="notification-container">
-          {/* Stats Cards */}
-          <div className="notification-stats-grid">
-            <div className="notification-stat-card stat-total">
-              <div className="stat-icon">
-                <Bell size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Total</p>
-                <h3 className="stat-value">{totalNotifs}</h3>
-              </div>
+          {/* Erreur (si besoin) */}
+          {error && (
+            <div style={{ color: '#ef4444', margin: '0 0 16px', fontWeight: 600 }}>
+              {error}{' '}
+              <button onClick={refresh} style={{ marginLeft: 8 }}>
+                Réessayer
+              </button>
             </div>
-            <div className="notification-stat-card stat-unread">
-              <div className="stat-icon">
-                <AlertCircle size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Non Lues</p>
-                <h3 className="stat-value">{unreadNotifs}</h3>
-              </div>
-            </div>
-            <div className="notification-stat-card stat-success">
-              <div className="stat-icon">
-                <CheckCircle size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Succès</p>
-                <h3 className="stat-value">{successNotifs}</h3>
-              </div>
-            </div>
-            <div className="notification-stat-card stat-warning">
-              <div className="stat-icon">
-                <AlertCircle size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Alertes</p>
-                <h3 className="stat-value">{warningNotifs}</h3>
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Toolbar */}
-          <div className="notification-toolbar">
-            <CustomDropdown
-              options={filterOptions}
-              value={filterType}
-              onChange={setFilterType}
-              icon={Filter}
-            />
-          </div>
+          {/* Liste */}
+          {loading ? (
+            <div className="notification-grid">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="notification-card" style={{ opacity: 0.6 }}>
+                  <div className="notif-card-header">
+                    <div className="notif-icon" style={{ background: '#263244', width: 48, height: 48 }} />
+                  </div>
+                  <div className="notif-card-body">
+                    <div style={{ height: 14, width: 160, background: '#1f2a3a', borderRadius: 6, marginBottom: 10 }} />
+                    <div style={{ height: 12, background: '#1f2a3a', borderRadius: 6 }} />
+                    <div style={{ height: 12, background: '#1f2a3a', borderRadius: 6, marginTop: 8 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="notification-grid">
+              {items.length === 0 ? (
+                <div className="notification-empty">
+                  <Bell size={64} />
+                  <h3>Aucune notification trouvée</h3>
+                  <p>Vous serez informé ici de toutes les mises à jour importantes.</p>
+                </div>
+              ) : (
+                items.map((n) => {
+                  const { Icon, color } = iconFor(n.status);
+                  const title = n.title;
 
-          {/* Notifications Grid */}
-          <div className="notification-grid">
-            {filteredNotifications.length === 0 ? (
-              <div className="notification-empty">
-                <Bell size={64} />
-                <h3>Aucune notification trouvée</h3>
-                <p>Vous serez informé ici de toutes les mises à jour importantes</p>
-              </div>
-            ) : (
-              filteredNotifications.map(note => {
-                const NotifIcon = getTypeIcon(note.type);
-                const iconColor = getTypeColor(note.type);
-                return (
-                  <div
-                    key={note.id}
-                    className={`notification-card ${!note.seen ? 'unread' : ''}`}
-                  >
-                    <div className="notif-card-header">
-                      <div
-                        className="notif-icon"
-                        style={{
-                          background: `${iconColor}1a`,
-                          color: iconColor
-                        }}
-                      >
-                        <NotifIcon size={20} />
+                  // Message selon les règles
+                  const message =
+                    n.status === 'rejected'
+                      ? `${n.type} — ${n.rejectionReason || 'Motif non précisé'}`
+                      : `${n.type}${n.notes ? ` — ${n.notes}` : ''}`;
+
+                  return (
+                    <div key={n.id} className="notification-card">
+                      <div className="notif-card-header">
+                        <div className="notif-icon" style={{ background: `${color}1a`, color }} title={title}>
+                          <Icon size={20} />
+                        </div>
                       </div>
-                      {!note.seen && <span className="notif-unread-badge">Nouveau</span>}
-                    </div>
-                    <div className="notif-card-body">
-                      <h3 className="notif-title">{note.title}</h3>
-                      <p className="notif-message">{note.message}</p>
-                      <div className="notif-meta">
-                        <div className="notif-meta-item">
-                          <Clock size={14} />
-                          <span>{note.date}</span>
+
+                      <div className="notif-card-body">
+                        <h3 className="notif-title">{title}</h3>
+                        <p className="notif-message">{message}</p>
+                        <div className="notif-meta">
+                          <div className="notif-meta-item" title={toDateAny(n.createdAt).toLocaleString()}>
+                            <Clock size={14} />
+                            <span>{formatTimeAgo(n.createdAt)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="notif-card-footer">
-                      {!note.seen && (
-                        <button
-                          className="notif-action-btn mark-read"
-                          onClick={() => handleMarkAsRead(note.id)}
-                        >
-                          <CheckCircle size={16} />
-                          <span>Marquer lu</span>
-                        </button>
-                      )}
-
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       </main>
-
-      {/* Details Modal */}
-      {showDetailsModal && activeNotification && (
-        <div className="notification-modal-backdrop">
-          <div className="notification-modal">
-            <button
-              className="notification-modal-close"
-              onClick={() => setShowDetailsModal(false)}
-            >
-              <X size={22} />
-            </button>
-            <h3 className="notification-modal-title">
-              <Bell size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#5eead4"}} />
-              Détail de la notification
-            </h3>
-            <div className="notification-modal-fields">
-              <div className="modal-field">
-                <strong>Titre :</strong>
-                <span>{activeNotification.title}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Message :</strong>
-                <span>{activeNotification.message}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Reçu le :</strong>
-                <span>{activeNotification.date}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Type :</strong>
-                <span style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: '999px',
-                  background: `${getTypeColor(activeNotification.type)}1a`,
-                  color: getTypeColor(activeNotification.type),
-                  fontWeight: 600,
-                  display: 'inline-block'
-                }}>
-                  {getTypeLabel(activeNotification.type)}
-                </span>
-              </div>
-              <div className="modal-field">
-                <strong>Statut :</strong>
-                <span style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: '999px',
-                  background: activeNotification.seen ? '#10b9811a' : '#f59e0b1a',
-                  color: activeNotification.seen ? '#10b981' : '#f59e0b',
-                  fontWeight: 600,
-                  display: 'inline-block'
-                }}>
-                  {activeNotification.seen ? 'Lu' : 'Non lu'}
-                </span>
-              </div>
-            </div>
-            <button
-              className="notification-modal-close-btn"
-              onClick={() => setShowDetailsModal(false)}
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

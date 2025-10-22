@@ -1,144 +1,124 @@
-import React, { useState } from 'react';
+// src/pages/parent/NotificationsParents.jsx
+import React, { useEffect, useState } from 'react';
 import Sidebar from '../../component/sidebarparent';
-import CustomDropdown from '../../component/CustomDropdown';
-import {
-  Bell,
-  Menu,
-  X,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Eye,
-  Trash2,
-  Filter,
-  Clock,
-  Info
-} from 'lucide-react';
+import { Bell, Menu, X, CheckCircle, XCircle, FileText, Clock, RotateCw, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../../../css/parent/NotificationsParents.css';
+import api from '../../../api'; // ✅ axios avec ID token
+
+/* Utils dates (ISO / Date / Firestore Timestamp) */
+function toDateAny(v) {
+  if (!v) return new Date();
+  if (v instanceof Date) return v;
+  if (typeof v === 'string' || typeof v === 'number') return new Date(v);
+  if (v?._seconds) return new Date(v._seconds * 1000);
+  if (v?.seconds) return new Date(v.seconds * 1000);
+  return new Date(v);
+}
+function formatTimeAgo(value) {
+  const ts = toDateAny(value);
+  const diffMs = Date.now() - ts.getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const d = Math.floor(h / 24);
+  return `il y a ${d} j`;
+}
+
+/* Normalise enveloppe backend */
+const normalizeList = (data) => {
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.notifications)) return data.notifications;
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data)) return data;
+  return [];
+};
+
+/* Map → format UI parent (garde seulement approved / rejected / document_sent) */
+function mapParentNotif(n) {
+  const kind = String(n.kind || '').toLowerCase();
+
+  // On ne montre pas 'request_submitted' au parent
+  if (!['request_approved', 'request_rejected', 'document_sent'].includes(kind)) return null;
+
+  const studentName =
+    n.requestedFor?.name ||
+    n.requestedFor?.displayName ||
+    [n.requestedFor?.prenom, n.requestedFor?.nom].filter(Boolean).join(' ') ||
+    '—';
+
+  const base = {
+    id: n.id || n.notifId || n.requestId || Math.random().toString(36).slice(2),
+    student: studentName,
+    type: n.type || 'Document',
+    notes: n.notes || '',
+    rejectionReason: n.rejectionReason || '',
+    createdAt: n.createdAt || n.approvedAt || n.rejectedAt || new Date(),
+  };
+
+  if (kind === 'request_approved') {
+    return { ...base, status: 'approved', title: 'Demande approuvée' };
+  }
+  if (kind === 'request_rejected') {
+    return { ...base, status: 'rejected', title: 'Demande rejetée' };
+  }
+  return { ...base, status: 'sent', title: 'Document envoyé' }; // document_sent
+}
+
+/* Icône + couleur par statut */
+function iconFor(status) {
+  if (status === 'approved') return { Icon: CheckCircle, color: '#10b981', title: 'Demande approuvée' };
+  if (status === 'rejected') return { Icon: XCircle, color: '#ef4444', title: 'Demande rejetée' };
+  return { Icon: FileText, color: '#3b82f6', title: 'Document envoyé' }; // sent
+}
 
 const NotificationsParents = () => {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  
   const [activeTab, setActiveTab] = useState('notifications');
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [activeNotification, setActiveNotification] = useState(null);
-  const [filterType, setFilterType] = useState('');
+
+  const [items, setItems] = useState([]); // notifications UI filtrées
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   const navigate = useNavigate();
+  const handleLogout = () => navigate('/parent/login');
 
-  const userData = {
-    firstName: "Fatima",
-    lastName: "Bennani",
-    role: "Parent",
-    profilePic: "https://ui-avatars.com/api/?name=Fatima+Bennani&background=17766e&color=fff&size=200"
-  };
-
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Document disponible",
-      message: "Le bulletin S1 2024-2025 d'Ahmed est disponible au téléchargement.",
-      date: "2025-10-15 10:28",
-      type: "success",
-      seen: false
-    },
-    {
-      id: 2,
-      title: "Demande approuvée",
-      message: "La demande d'attestation de scolarité de Sara a été approuvée.",
-      date: "2025-10-14 14:12",
-      type: "info",
-      seen: true
-    },
-    {
-      id: 3,
-      title: "Demande rejetée",
-      message: "Convention de Stage pour Ahmed rejetée : justification manquante.",
-      date: "2025-10-12 16:44",
-      type: "error",
-      seen: false
-    },
-    {
-      id: 4,
-      title: "Rappel important",
-      message: "Reçu d'inscription manquant pour Sara, merci de le téléverser rapidement.",
-      date: "2025-10-08 09:00",
-      type: "warning",
-      seen: false
-    },
-    {
-      id: 5,
-      title: "Nouvelle notification",
-      message: "Le personnel administratif vous a envoyé un message concernant Ahmed.",
-      date: "2025-10-05 11:30",
-      type: "info",
-      seen: true
-    }
-  ]);
-
-  const filterOptions = [
-    { value: '', label: 'Tous les types', icon: Filter, color: '#5eead4' },
-    { value: 'success', label: 'Succès', icon: CheckCircle, color: '#10b981' },
-    { value: 'info', label: 'Information', icon: Info, color: '#3b82f6' },
-    { value: 'warning', label: 'Avertissement', icon: AlertCircle, color: '#f59e0b' },
-    { value: 'error', label: 'Erreur', icon: XCircle, color: '#ef4444' }
-  ];
-
-  const handleLogout = () => {
-    navigate('/parent/login');
-  };
-
-  const handleDelete = (id) => {
-    setNotifications(notifications.filter(n => n.id !== id));
-  };
-
-  const handleMarkAsRead = (id) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, seen: true } : n
-    ));
-  };
-
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'success': return CheckCircle;
-      case 'info': return Info;
-      case 'error': return XCircle;
-      case 'warning': return AlertCircle;
-      default: return Bell;
+  const fetchMine = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      // 🔐 Feed "mine" → uniquement les notifs destinées à ce parent (uid)
+      const { data } = await api.get('/notifications', { params: { scope: 'mine', limit: 100 } });
+      const mapped = normalizeList(data)
+        .map(mapParentNotif)
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setItems(mapped);
+    } catch (e) {
+      console.error('PARENT NOTIFS ERR', e?.response?.data || e.message);
+      const msg =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        'Impossible de charger les notifications.';
+      setError(msg);
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'success': return '#10b981';
-      case 'info': return '#3b82f6';
-      case 'error': return '#ef4444';
-      case 'warning': return '#f59e0b';
-      default: return '#6b7280';
-    }
-  };
+  useEffect(() => {
+    fetchMine();
+  }, []);
 
-  const getTypeLabel = (type) => {
-    switch (type) {
-      case 'success': return 'Succès';
-      case 'info': return 'Information';
-      case 'error': return 'Erreur';
-      case 'warning': return 'Avertissement';
-      default: return 'Notification';
-    }
-  };
-
-  const filteredNotifications = notifications.filter(n => 
-    filterType === '' || n.type === filterType
-  );
-
-  const totalNotifs = notifications.length;
-  const unreadNotifs = notifications.filter(n => !n.seen).length;
-  const successNotifs = notifications.filter(n => n.type === 'success').length;
-  const warningNotifs = notifications.filter(n => n.type === 'warning').length;
+  const refresh = () => fetchMine();
 
   return (
     <div className="parent-notifications-page">
@@ -148,15 +128,10 @@ const NotificationsParents = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        userData={userData}
+        // pas de userData en dur
       />
 
-      {sidebarOpen && (
-        <div 
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
       <main className={`parent-main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <header className="parent-header">
@@ -169,114 +144,83 @@ const NotificationsParents = () => {
           </button>
           <h1 className="parent-page-title">Notifications</h1>
           <div className="parent-header-actions">
+            <button className="parent-notif-btn" onClick={refresh} title="Rafraîchir">
+              <RotateCw size={18} />
+            </button>
             <button className="parent-notif-btn" aria-label="Notifications">
               <Bell size={20} />
-              {unreadNotifs > 0 && <span className="notification-badge"></span>}
             </button>
           </div>
         </header>
 
         <div className="parent-notifications-content">
-          {/* Stats Cards */}
-          <div className="parent-notif-stats-grid">
-            <div className="parent-notif-stat-card stat-total">
-              <div className="stat-icon">
-                <Bell size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Total</p>
-                <h3 className="stat-value">{totalNotifs}</h3>
-              </div>
+          {/* Erreur si besoin */}
+          {error && (
+            <div style={{ color: '#ef4444', margin: '0 0 16px', fontWeight: 600 }}>
+              {error}{' '}
+              <button onClick={refresh} style={{ marginLeft: 8 }}>
+                Réessayer
+              </button>
             </div>
-            <div className="parent-notif-stat-card stat-unread">
-              <div className="stat-icon">
-                <AlertCircle size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Non Lues</p>
-                <h3 className="stat-value">{unreadNotifs}</h3>
-              </div>
-            </div>
-            <div className="parent-notif-stat-card stat-success">
-              <div className="stat-icon">
-                <CheckCircle size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Succès</p>
-                <h3 className="stat-value">{successNotifs}</h3>
-              </div>
-            </div>
-            <div className="parent-notif-stat-card stat-warning">
-              <div className="stat-icon">
-                <AlertCircle size={24} />
-              </div>
-              <div className="stat-info">
-                <p className="stat-label">Alertes</p>
-                <h3 className="stat-value">{warningNotifs}</h3>
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Toolbar */}
-          <div className="parent-notif-toolbar">
-            <CustomDropdown
-              options={filterOptions}
-              value={filterType}
-              onChange={setFilterType}
-              icon={Filter}
-            />
-          </div>
-
-          {/* Notifications Grid */}
           <div className="parent-notifications-grid">
-            {filteredNotifications.length === 0 ? (
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="parent-notification-card" style={{ opacity: 0.6 }}>
+                  <div className="notif-card-header">
+                    <div className="notif-icon" style={{ background: '#263244', width: 48, height: 48 }} />
+                  </div>
+                  <div className="notif-card-body">
+                    <div style={{ height: 14, width: 180, background: '#1f2a3a', borderRadius: 6, marginBottom: 10 }} />
+                    <div style={{ height: 12, background: '#1f2a3a', borderRadius: 6 }} />
+                    <div style={{ height: 12, background: '#1f2a3a', borderRadius: 6, marginTop: 8 }} />
+                  </div>
+                </div>
+              ))
+            ) : items.length === 0 ? (
               <div className="parent-notifications-empty">
                 <Bell size={64} />
                 <h3>Aucune notification trouvée</h3>
                 <p>Vous serez informé ici de toutes les mises à jour importantes</p>
               </div>
             ) : (
-              filteredNotifications.map(note => {
-                const NotifIcon = getTypeIcon(note.type);
-                const iconColor = getTypeColor(note.type);
+              items.map((n) => {
+                const { Icon, color, title } = iconFor(n.status);
+
+                // Message selon les règles
+                const message =
+                  n.status === 'rejected'
+                    ? `${n.type} — ${n.rejectionReason || 'Motif non précisé'}`
+                    : `${n.type}${n.notes ? ` — ${n.notes}` : ''}`;
+
                 return (
-                  <div
-                    key={note.id}
-                    className={`parent-notification-card ${!note.seen ? 'unread' : ''}`}
-                  >
+                  <div key={n.id} className="parent-notification-card">
                     <div className="notif-card-header">
-                      <div
-                        className="notif-icon"
-                        style={{
-                          background: `${iconColor}1a`,
-                          color: iconColor
-                        }}
-                      >
-                        <NotifIcon size={20} />
+                      <div className="notif-icon" style={{ background: `${color}1a`, color }} title={title}>
+                        <Icon size={20} />
                       </div>
-                      {!note.seen && <span className="notif-unread-badge">Nouveau</span>}
                     </div>
+
                     <div className="notif-card-body">
-                      <h3 className="notif-title">{note.title}</h3>
-                      <p className="notif-message">{note.message}</p>
+                      <h3 className="notif-title">{title}</h3>
+
+                      {/* Étudiant concerné */}
+                      <p className="notif-message" style={{ fontWeight: 600, marginBottom: 6 }}>
+                        <User size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />
+                        Étudiant : <span style={{ fontWeight: 700 }}>{n.student}</span>
+                      </p>
+
+                      {/* Détails */}
+                      <p className="notif-message">{message}</p>
+
                       <div className="notif-meta">
-                        <div className="notif-meta-item">
+                        <div className="notif-meta-item" title={toDateAny(n.createdAt).toLocaleString()}>
                           <Clock size={14} />
-                          <span>{note.date}</span>
+                          <span>{formatTimeAgo(n.createdAt)}</span>
                         </div>
                       </div>
                     </div>
-                 
-                      {!note.seen && (
-                        <button
-                          className="notif-action-btn mark-read"
-                          onClick={() => handleMarkAsRead(note.id)}
-                        >
-                          <CheckCircle size={16} />
-                          <span>Marquer lu</span>
-                        </button>
-                      )}
-
                   </div>
                 );
               })
@@ -284,70 +228,6 @@ const NotificationsParents = () => {
           </div>
         </div>
       </main>
-
-      {/* Details Modal */}
-      {showDetailsModal && activeNotification && (
-        <div className="parent-notifications-modal-backdrop">
-          <div className="parent-notifications-modal">
-            <button
-              className="parent-notifications-modal-close"
-              onClick={() => setShowDetailsModal(false)}
-            >
-              <X size={22} />
-            </button>
-            <h3 className="parent-notifications-modal-title">
-              <Bell size={18} style={{verticalAlign: "middle", marginRight: 8, color: "#5eead4"}} />
-              Détail de la notification
-            </h3>
-            <div className="parent-notifications-modal-fields">
-              <div className="modal-field">
-                <strong>Titre :</strong>
-                <span>{activeNotification.title}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Message :</strong>
-                <span>{activeNotification.message}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Reçu le :</strong>
-                <span>{activeNotification.date}</span>
-              </div>
-              <div className="modal-field">
-                <strong>Type :</strong>
-                <span style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: '999px',
-                  background: `${getTypeColor(activeNotification.type)}1a`,
-                  color: getTypeColor(activeNotification.type),
-                  fontWeight: 600,
-                  display: 'inline-block'
-                }}>
-                  {getTypeLabel(activeNotification.type)}
-                </span>
-              </div>
-              <div className="modal-field">
-                <strong>Statut :</strong>
-                <span style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: '999px',
-                  background: activeNotification.seen ? '#10b9811a' : '#f59e0b1a',
-                  color: activeNotification.seen ? '#10b981' : '#f59e0b',
-                  fontWeight: 600,
-                  display: 'inline-block'
-                }}>
-                  {activeNotification.seen ? 'Lu' : 'Non lu'}
-                </span>
-              </div>
-            </div>
-            <button
-              className="parent-notifications-modal-close-btn"
-              onClick={() => setShowDetailsModal(false)}
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
