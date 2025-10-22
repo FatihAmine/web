@@ -12,15 +12,13 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import './sidebar.css';
 
-// ✅ axios (ajoute l'ID token Firebase) + Firebase
-import api from '../../api';               
+import api from '../../api';
 import { signOut } from '../../firebaseClient';
 
 const menuItems = [
   { id: 'dashboard',     icon: Home,     label: 'Tableau de bord', path: '/personnel' },
   { id: 'documents',     icon: FileText, label: 'Documents',       path: '/personnel/documents' },
   { id: 'notifications', icon: Bell,     label: 'Notifications',   path: '/personnel/notifications' },
-  { id: 'settings',      icon: Settings, label: 'Paramètres',      path: '/personnel/settings' }
 ];
 
 // Helpers
@@ -72,7 +70,7 @@ const Sidebar = ({
     let mounted = true;
     (async () => {
       try {
-        const { data } = await api.get('/me'); // token ajouté par l'intercepteur axios
+        const { data } = await api.get('/me');
         if (mounted) setMe(data);
       } catch (e) {
         if (mounted) setMe(null);
@@ -95,11 +93,10 @@ const Sidebar = ({
     localStorage.setItem('sidebarOpen', JSON.stringify(newState));
   };
 
-  // 🔓 Logout: ne pas désinscrire le token FCM (tu veux continuer à recevoir les notifications)
+  // 🔓 Logout
   const handleLogout = async () => {
     try { await signOut(); } catch (_) {}
     if (onLogout) onLogout();
-    // facultatif: nettoyer d'anciens mocks
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
     navigate('/login');
@@ -108,7 +105,19 @@ const Sidebar = ({
   // Données d'affichage à partir de "me"
   const fullName = fullNameFromMe(me);
   const role     = me?.role || '';
-  const photoURL = me?.photoURL || '/avatar.png'; // on garde le profil <img> comme tu veux
+  // initials avatar (same logic as other roles)
+  let avatarText = '';
+  const prenom = (me?.prenom || '').trim();
+  const nom = (me?.nom || '').trim();
+  if (prenom || nom) {
+    avatarText = `${prenom ? prenom[0] : ''}${nom ? nom[0] : ''}`.toUpperCase();
+  } else if (me?.displayName) {
+    avatarText = me.displayName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  } else if (me?.email) {
+    avatarText = me.email[0].toUpperCase();
+  } else {
+    avatarText = 'U';
+  }
 
   return (
     <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : 'admin-sidebar-closed'}`}>
@@ -123,8 +132,23 @@ const Sidebar = ({
 
       <div className="admin-sidebar-content">
         <div className="admin-profile-section">
-          {/* 👇 garde l'image de profil telle quelle, mais source = utilisateur courant */}
-          <img src={photoURL} alt="Profile" className="admin-profile-pic" />
+          {/* Initials Avatar using admin-profile-pic */}
+          <div
+            className="admin-profile-pic"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.45rem',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              background: 'linear-gradient(135deg, #17766e 0%, #5eead4 100%)',
+              color: '#fff',
+              userSelect: 'none'
+            }}
+          >
+            {avatarText}
+          </div>
           {sidebarOpen && (
             <div className="admin-profile-info">
               <h3 className="admin-profile-name">
