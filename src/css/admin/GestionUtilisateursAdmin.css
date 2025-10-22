@@ -655,7 +655,10 @@
     padding: 0.8rem;
   }
 }
-/* STUDENT MULTI DROPDOWN STYLES */
+
+/* =============================
+   STUDENT MULTI DROPDOWN STYLES
+   ============================= */
 .dropdown-field {
   position: relative;
   display: flex;
@@ -722,6 +725,7 @@
   transform: translateY(-50%) rotate(180deg);
 }
 
+/* Dropdown Panel */
 .dropdown-panel {
   position: absolute;
   top: calc(100% + 0.5rem);
@@ -732,10 +736,11 @@
   border-radius: 0.5rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
   z-index: 100;
-  max-height: 280px;
+  max-height: 300px;
   display: flex;
   flex-direction: column;
   animation: dropdownSlideIn 0.2s ease;
+  overflow: hidden;
 }
 
 @keyframes dropdownSlideIn {
@@ -749,6 +754,7 @@
   }
 }
 
+/* Search Input */
 .dropdown-search {
   padding: 0.7rem 0.9rem;
   border: none;
@@ -757,7 +763,7 @@
   color: #f1f5f9;
   font-size: 0.9rem;
   outline: none;
-  border-radius: 0.5rem 0.5rem 0 0;
+  flex-shrink: 0;
 }
 
 .dropdown-search:focus {
@@ -769,30 +775,41 @@
   color: #64748b;
 }
 
+/* Options Container - SCROLLABLE */
 .dropdown-options {
   overflow-y: auto;
-  max-height: 220px;
+  max-height: 240px;
   padding: 0.4rem;
+  flex: 1;
 }
 
+/* Custom Scrollbar */
 .dropdown-options::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .dropdown-options::-webkit-scrollbar-track {
   background: #1e293b;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .dropdown-options::-webkit-scrollbar-thumb {
-  background: #374151;
-  border-radius: 3px;
+  background: #17766e;
+  border-radius: 4px;
+  transition: background 0.2s;
 }
 
 .dropdown-options::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
+  background: #1eb09e;
 }
 
+/* Firefox scrollbar */
+.dropdown-options {
+  scrollbar-width: thin;
+  scrollbar-color: #17766e #1e293b;
+}
+
+/* Dropdown Option */
 .dropdown-option {
   display: flex;
   align-items: center;
@@ -815,6 +832,7 @@
   font-weight: 600;
 }
 
+/* Checkbox */
 .checkbox {
   width: 18px;
   height: 18px;
@@ -834,6 +852,7 @@
   color: #fff;
 }
 
+/* Empty State */
 .dropdown-empty {
   padding: 1.5rem;
   text-align: center;
@@ -842,6 +861,16 @@
 }
 
 /* Responsive adjustments */
+@media (max-width: 600px) {
+  .dropdown-panel {
+    max-height: 260px;
+  }
+  
+  .dropdown-options {
+    max-height: 200px;
+  }
+}
+
 @media (max-width: 480px) {
   .dropdown-panel {
     max-height: 240px;
